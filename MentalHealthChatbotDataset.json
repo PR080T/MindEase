@@ -12815,6 +12815,204 @@
             "responses": [
                 "Sadness is a normal reaction to a loss, disappointment, problems, or other difficult situations. Feeling sad from time to time is just another part of being human. In these cases, feelings of sadness go away quickly and you can go about your daily life. Other ways to talk about sadness might be feeling low, feeling down, or feeling blue.A person may say they are feeling depressed, but if it goes away on its own and doesn't impact life in a big way, it probably isn't the illness of depression. Depression is a mental illness that affects your mood, the way you understand yourself, and the way you understand and relate to things around you. It can also go by different names, such as clinical depression, major depressive disorder, or major depression. Depression can come up for no reason, and it lasts for a long time. It's much more than sadness or low mood. People who experience depression may feel worthless or hopeless. They may feel unreasonable guilty. Some people may experience depression as anger or irritability. It may be hard to concentrate or make decisions. Most people lose interest in things that they used to enjoy and may isolate themselves from others. There are also physical signs of depression, such as problems with sleep, appetite and energy and unexplainable aches or pains. Some may experience difficult thoughts about death or ending their life (suicide). Depression lasts longer than two weeks, doesn't usually go away on its own, and impacts your life. It's a real illness, and it is very treatable. It's important to seek help if you're concerned about depression."
             ]
+        },
+        {
+            "tag": "social-media-stress",
+            "patterns": [
+                "social media is making me anxious",
+                "instagram makes me feel bad",
+                "facebook depression",
+                "social media comparison",
+                "everyone looks happier online",
+                "social media anxiety",
+                "comparing myself to others online",
+                "social media overwhelm"
+            ],
+            "responses": [
+                "**YOU ARE MORE THAN YOUR SOCIAL MEDIA PRESENCE!** Social media can create unrealistic comparisons. Remember, people share their highlights, not their struggles. Consider taking breaks from social media and focusing on your real-life connections and achievements.",
+                "**YOUR WORTH ISN'T MEASURED BY LIKES OR FOLLOWERS!** Social media anxiety is very common. Try limiting your screen time, unfollowing accounts that make you feel bad, and remember that online personas rarely reflect reality.",
+                "**COMPARISON IS THE THIEF OF JOY!** Everyone's journey is different. Focus on your own growth and progress. Consider a digital detox or curating your feed to include more positive, inspiring content.",
+                "**YOU ARE ENOUGH JUST AS YOU ARE!** Social media can trigger feelings of inadequacy. Practice gratitude for your own life, engage in offline activities you enjoy, and remember that authentic connections matter more than online validation."
+            ]
+        },
+        {
+            "tag": "work-burnout",
+            "patterns": [
+                "I'm burned out at work",
+                "work is exhausting me",
+                "job stress",
+                "workplace anxiety",
+                "too much work pressure",
+                "work life balance",
+                "hate my job",
+                "work overwhelm",
+                "career stress"
+            ],
+            "responses": [
+                "**YOUR WELL-BEING COMES FIRST!** Work burnout is serious. Consider setting boundaries, taking regular breaks, and speaking with your supervisor about workload. Remember, you're more than your job title.",
+                "**YOU DESERVE A HEALTHY WORK ENVIRONMENT!** Chronic work stress can impact your mental health. Try stress-reduction techniques like deep breathing, prioritize tasks, and don't hesitate to seek support from HR or a counselor.",
+                "**IT'S OKAY TO PRIORITIZE YOUR MENTAL HEALTH!** Work-life balance is crucial. Set clear boundaries between work and personal time, practice saying no to excessive demands, and engage in activities that recharge you.",
+                "**YOU HAVE THE POWER TO MAKE CHANGES!** If work is consistently affecting your well-being, consider discussing flexible arrangements, seeking career counseling, or exploring new opportunities that align better with your values."
+            ]
+        },
+        {
+            "tag": "relationship-issues",
+            "patterns": [
+                "relationship problems",
+                "fighting with partner",
+                "relationship anxiety",
+                "trust issues",
+                "communication problems",
+                "relationship stress",
+                "partner doesn't understand",
+                "relationship conflicts",
+                "feeling disconnected from partner"
+            ],
+            "responses": [
+                "**HEALTHY RELATIONSHIPS REQUIRE EFFORT FROM BOTH SIDES!** Communication is key. Try expressing your feelings using 'I' statements, listen actively to your partner, and consider couples counseling if needed.",
+                "**YOU DESERVE LOVE AND RESPECT!** Relationship challenges are normal, but persistent issues need attention. Focus on open communication, set healthy boundaries, and remember that both partners should feel valued.",
+                "**TRUST AND COMMUNICATION ARE THE FOUNDATION!** Work on expressing your needs clearly, practice active listening, and be patient with the process. Consider professional help if patterns persist.",
+                "**EVERY RELATIONSHIP HAS UPS AND DOWNS!** What matters is how you work through them together. Focus on understanding each other's perspectives, show appreciation regularly, and maintain your individual identities."
+            ]
+        },
+        {
+            "tag": "financial-stress",
+            "patterns": [
+                "money problems",
+                "financial anxiety",
+                "can't pay bills",
+                "worried about money",
+                "financial stress",
+                "debt problems",
+                "unemployment stress",
+                "money worries",
+                "financial insecurity"
+            ],
+            "responses": [
+                "**FINANCIAL STRESS IS OVERWHELMING, BUT YOU CAN GET THROUGH THIS!** Start by listing your expenses and income, look for areas to cut costs, and consider seeking help from financial counselors or assistance programs.",
+                "**YOU ARE NOT DEFINED BY YOUR FINANCIAL SITUATION!** Money worries are incredibly stressful. Focus on what you can control, create a simple budget, and remember that financial situations can improve with time and effort.",
+                "**TAKE IT ONE STEP AT A TIME!** Financial anxiety can be paralyzing. Break down your financial goals into small, manageable steps. Seek support from financial advisors, family, or community resources.",
+                "**YOUR WORTH ISN'T MEASURED BY YOUR BANK ACCOUNT!** Financial stress affects mental health significantly. Practice stress-reduction techniques, focus on free activities that bring joy, and remember that this situation is temporary."
+            ]
+        },
+        {
+            "tag": "pandemic-stress",
+            "patterns": [
+                "covid anxiety",
+                "pandemic stress",
+                "isolation during covid",
+                "lockdown depression",
+                "pandemic fatigue",
+                "covid worries",
+                "social distancing loneliness",
+                "pandemic mental health",
+                "covid fear"
+            ],
+            "responses": [
+                "**WE'RE ALL NAVIGATING UNPRECEDENTED TIMES TOGETHER!** Pandemic stress is real and valid. Maintain routines, stay connected virtually with loved ones, limit news consumption, and practice self-care daily.",
+                "**YOUR FEELINGS ABOUT THE PANDEMIC ARE COMPLETELY NORMAL!** This global situation has affected everyone's mental health. Focus on what you can control, practice gratitude, and reach out for support when needed.",
+                "**YOU'RE STRONGER THAN YOU REALIZE!** Pandemic fatigue is exhausting. Take breaks from news, engage in hobbies, maintain social connections safely, and remember that this too shall pass.",
+                "**ISOLATION IS HARD, BUT YOU'RE NOT ALONE!** Many people are struggling with pandemic-related stress. Use technology to stay connected, establish new routines, and be patient with yourself as we all adapt."
+            ]
+        },
+        {
+            "tag": "body-image",
+            "patterns": [
+                "I hate my body",
+                "body image issues",
+                "feel ugly",
+                "weight problems",
+                "body dysmorphia",
+                "appearance anxiety",
+                "don't like how I look",
+                "body shame",
+                "eating disorder thoughts"
+            ],
+            "responses": [
+                "**YOUR BODY IS AMAZING AND DESERVES LOVE!** Body image struggles are common but painful. Practice body neutrality, focus on what your body can do rather than how it looks, and challenge negative self-talk.",
+                "**YOU ARE BEAUTIFUL EXACTLY AS YOU ARE!** Society's beauty standards are unrealistic and harmful. Practice self-compassion, surround yourself with body-positive influences, and consider professional help if these thoughts persist.",
+                "**YOUR WORTH IS NOT DETERMINED BY YOUR APPEARANCE!** Body image issues can significantly impact mental health. Focus on health rather than appearance, practice gratitude for your body's functions, and seek support if needed.",
+                "**EVERY BODY IS A GOOD BODY!** Challenge the negative thoughts about your appearance. Practice mirror work with kindness, engage in activities that make you feel strong and capable, and remember that true beauty comes from within."
+            ]
+        },
+        {
+            "tag": "academic-pressure",
+            "patterns": [
+                "school stress",
+                "exam anxiety",
+                "academic pressure",
+                "failing grades",
+                "study stress",
+                "college anxiety",
+                "academic burnout",
+                "test anxiety",
+                "school overwhelm"
+            ],
+            "responses": [
+                "**YOUR GRADES DON'T DEFINE YOUR WORTH!** Academic pressure can be overwhelming. Break study sessions into manageable chunks, practice good sleep hygiene, and remember that learning is more important than perfect grades.",
+                "**YOU'RE CAPABLE OF MORE THAN YOU REALIZE!** Academic stress is common but manageable. Create a study schedule, use active learning techniques, seek help from teachers or tutors, and practice stress-reduction techniques.",
+                "**PROGRESS, NOT PERFECTION!** Academic burnout is real. Take regular breaks, maintain a balanced lifestyle, connect with classmates for support, and remember that setbacks are part of the learning process.",
+                "**BELIEVE IN YOUR ABILITY TO SUCCEED!** Test anxiety can interfere with performance. Practice relaxation techniques, prepare thoroughly but don't over-study, get adequate sleep, and remember that one test doesn't determine your future."
+            ]
+        },
+        {
+            "tag": "family-problems",
+            "patterns": [
+                "family issues",
+                "parents don't understand",
+                "family conflict",
+                "toxic family",
+                "family stress",
+                "sibling problems",
+                "family drama",
+                "family pressure",
+                "family expectations"
+            ],
+            "responses": [
+                "**FAMILY RELATIONSHIPS CAN BE COMPLEX AND CHALLENGING!** It's okay to set boundaries with family members. Focus on what you can control, communicate your needs clearly, and remember that you can't change others, only your response to them.",
+                "**YOU DESERVE RESPECT AND UNDERSTANDING FROM YOUR FAMILY!** Family conflicts are emotionally draining. Try to approach conversations with empathy, set healthy boundaries, and seek support from friends or counselors when needed.",
+                "**YOUR MENTAL HEALTH MATTERS MORE THAN FAMILY EXPECTATIONS!** It's okay to disappoint family members if their expectations are unrealistic or harmful. Stay true to your values and seek support from people who accept you as you are.",
+                "**HEALTHY FAMILIES SUPPORT EACH OTHER'S GROWTH!** If your family environment is toxic, prioritize your well-being. Limit contact if necessary, build a chosen family of supportive friends, and consider professional help to process these relationships."
+            ]
+        },
+        {
+            "tag": "self-care",
+            "patterns": [
+                "how to practice self care",
+                "self care ideas",
+                "taking care of myself",
+                "self care routine",
+                "mental health self care",
+                "self care tips",
+                "how to be kind to myself",
+                "self compassion"
+            ],
+            "responses": [
+                "**SELF-CARE IS NOT SELFISH, IT'S ESSENTIAL!** Start with basics: adequate sleep, nutritious food, regular movement, and activities that bring you joy. Self-care looks different for everyone, so find what works for you.",
+                "**YOU DESERVE TO TREAT YOURSELF WITH KINDNESS!** Self-care can be simple: take a warm bath, read a book, go for a walk, practice deep breathing, or call a friend. The key is consistency, not perfection.",
+                "**SMALL ACTS OF SELF-CARE ADD UP TO BIG CHANGES!** Try setting boundaries, saying no to draining activities, practicing gratitude, engaging in hobbies, or simply taking a few minutes to breathe deeply each day.",
+                "**SELF-COMPASSION IS A SUPERPOWER!** Treat yourself like you would a good friend. Practice positive self-talk, forgive yourself for mistakes, celebrate small wins, and remember that taking care of yourself helps you care for others better."
+            ]
+        },
+        {
+            "tag": "motivation",
+            "patterns": [
+                "I have no motivation",
+                "feeling unmotivated",
+                "lack of energy",
+                "can't get started",
+                "procrastination",
+                "feeling lazy",
+                "no drive",
+                "lost motivation",
+                "feeling stuck"
+            ],
+            "responses": [
+                "**MOTIVATION COMES AND GOES, BUT DISCIPLINE BUILDS HABITS!** Start with tiny steps - even 5 minutes of action can build momentum. Break large tasks into smaller, manageable pieces and celebrate each small victory.",
+                "**YOU HAVE MORE STRENGTH THAN YOU REALIZE!** Low motivation is often a sign you need rest or a different approach. Try changing your environment, setting smaller goals, or finding an accountability partner to support you.",
+                "**PROGRESS IS PROGRESS, NO MATTER HOW SMALL!** When motivation is low, focus on just showing up. Do the minimum required, be kind to yourself, and remember that motivation often follows action, not the other way around.",
+                "**YOUR FEELINGS ARE VALID, AND THIS PHASE WILL PASS!** Sometimes lack of motivation signals burnout or depression. Practice self-compassion, ensure you're meeting basic needs, and consider seeking support if this persists."
+            ]
         }
     ]
 }
