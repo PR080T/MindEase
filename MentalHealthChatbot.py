@@ -13,6 +13,7 @@ import re
 import time
 from datetime import datetime
 from typing import Dict, Optional, Tuple, Union, Any
+import pytz
 
 import html
 import streamlit as st
@@ -103,6 +104,16 @@ def is_streamlit_context() -> bool:
         return hasattr(st, 'session_state') and st.session_state is not None
     except:
         return False
+
+# Helper function to get IST time
+def get_ist_time() -> datetime:
+    """Get current time in IST (Indian Standard Time)."""
+    ist = pytz.timezone('Asia/Kolkata')
+    return datetime.now(ist)
+
+def get_ist_timestamp() -> str:
+    """Get current timestamp in IST format (HH:MM:SS)."""
+    return get_ist_time().strftime("%H:%M:%S")
 
 # Set API Keys from environment variables or Streamlit secrets
 def get_api_keys() -> Tuple[Optional[str], Optional[str], Optional[str]]:
@@ -2438,7 +2449,7 @@ def initialize_session_state():
             st.session_state.messages = [
                 ("ai-message",
                  f"<strong>🤖 MindEase:</strong> {DEFAULT_WELCOME_MESSAGE}",
-                 datetime.now().strftime("%H:%M:%S"))]
+                 get_ist_timestamp())]
 
         # Session state for user preferences
         if "user_name" not in st.session_state:
@@ -2453,6 +2464,10 @@ def initialize_session_state():
             st.session_state.last_input = ""
         if "message_sent" not in st.session_state:
             st.session_state.message_sent = False
+        if "processed_inputs" not in st.session_state:
+            st.session_state.processed_inputs = set()
+        if "input_counter" not in st.session_state:
+            st.session_state.input_counter = 0
     except Exception as session_error:
         logger.error(f"Session state initialization error: {session_error}")
 
@@ -2468,6 +2483,7 @@ def main_ui():
         """Clear the input field and reset state variables."""
         st.session_state.user_input = ""
         st.session_state.input_key += 1
+        # Don't clear processed_inputs here to maintain duplicate prevention
 
     # Function to send message
     def send_message(message_text: str, model_choice: str) -> None:
@@ -2488,7 +2504,7 @@ def main_ui():
 
         if message_text:
             # Add user message immediately
-            message_timestamp = datetime.now().strftime("%H:%M:%S")
+            message_timestamp = get_ist_timestamp()
             st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(message_text)}", message_timestamp))
 
             # Clear input immediately for better UX
@@ -2569,7 +2585,7 @@ def main_ui():
                 response = "❌ No AI model is available. Please check your API keys configuration."
 
             # Add AI response with timestamp
-            response_timestamp = datetime.now().strftime("%H:%M:%S")
+            response_timestamp = get_ist_timestamp()
             model_display = model_choice if model_choice else "System"
             st.session_state.messages.append(
                 ("ai-message", f"<strong>🤖 MindEase ({model_display}):</strong> {response}", response_timestamp))
@@ -2649,7 +2665,7 @@ def main_ui():
             "🧘 **Practice mindfulness** - Stay present in the moment"
         ]
 
-        daily_tip = tips[hash(datetime.now().strftime("%Y-%m-%d")) % len(tips)]
+        daily_tip = tips[hash(get_ist_time().strftime("%Y-%m-%d")) % len(tips)]
         st.info(f"**Today's Tip:** {daily_tip}")
 
         st.markdown("---")
@@ -2696,7 +2712,7 @@ def main_ui():
         st.session_state.messages = [
             ("ai-message",
              f"<strong>🤖 MindEase:</strong> {DEFAULT_WELCOME_MESSAGE}",
-             datetime.now().strftime("%H:%M:%S"))]
+             get_ist_timestamp())]
 
     # Enhanced Input Section
     # User Input Field with session state management
@@ -2739,8 +2755,12 @@ def main_ui():
             st.session_state.messages = [
                 ("ai-message",
                  f"<strong>🤖 MindEase:</strong> {DEFAULT_WELCOME_MESSAGE}",
-                 datetime.now().strftime("%H:%M:%S"))]
+                 get_ist_timestamp())]
             clear_input()
+            # Clear processed inputs when chat is cleared
+            st.session_state.processed_inputs = set()
+            st.session_state.last_input = ""
+            st.session_state.input_counter = 0
             st.success("💫 Chat cleared! Ready for a fresh start.")
             st.rerun()
     except Exception as clear_error:
@@ -2749,23 +2769,75 @@ def main_ui():
 
     # Handle Message Send (Button click or Enter key)
     try:
+        # Periodic cleanup of processed_inputs to prevent memory issues
+        if len(st.session_state.processed_inputs) > 100:
+            # Keep only the most recent entries (within 5 minutes)
+            current_time = int(time.time() * 1000)
+            recent_inputs = {
+                input_id for input_id in st.session_state.processed_inputs
+                if current_time - int(input_id.split('_')[-1]) < 300000  # 5 minutes
+            }
+            st.session_state.processed_inputs = recent_inputs
+        
         # Get the current input value
         current_input = user_input.strip() if user_input else ""
+        
+        # Improved duplicate prevention logic
+        def should_process_input(input_text: str) -> bool:
+            """
+            Determine if an input should be processed based on improved duplicate prevention.
+            
+            Args:
+                input_text: The input text to check
+                
+            Returns:
+                bool: True if input should be processed, False otherwise
+            """
+            if not input_text:
+                return False
+                
+            current_time = int(time.time() * 1000)
+            
+            # Check for recent duplicates (within 2 seconds)
+            recent_same_inputs = [
+                p for p in st.session_state.processed_inputs 
+                if p.startswith(input_text + "_") and 
+                current_time - int(p.split('_')[-1]) < 2000  # 2 seconds
+            ]
+            
+            # Allow processing if:
+            # 1. Input is different from last processed input OR enough time has passed
+            # 2. No recent duplicates found
+            should_process = (
+                input_text != st.session_state.get('last_input', '') and
+                len(recent_same_inputs) == 0
+            )
+            
+            return should_process
         
         # Check if send button was clicked
         if send_btn:
             if current_input:
-                # Update last input to prevent duplicate processing
-                st.session_state.last_input = current_input
-                send_message(current_input, model_choice)
-                st.rerun()
+                if should_process_input(current_input):
+                    # Create unique identifier and process
+                    input_id = f"{current_input}_{int(time.time() * 1000)}"
+                    st.session_state.processed_inputs.add(input_id)
+                    st.session_state.last_input = current_input
+                    st.session_state.input_counter += 1
+                    send_message(current_input, model_choice)
+                    st.rerun()
+                else:
+                    st.info("⏳ Please wait a moment before sending the same message again...")
             else:
                 st.warning("⚠️ Please enter a message before sending.")
         
-        # Auto-send logic for Enter key (only if input is different from last processed)
-        elif current_input and current_input != st.session_state.get('last_input', ''):
-            # Update last input to prevent duplicate processing
+        # Auto-send logic for Enter key (improved duplicate prevention)
+        elif current_input and should_process_input(current_input):
+            # Create unique identifier and process
+            input_id = f"{current_input}_{int(time.time() * 1000)}"
+            st.session_state.processed_inputs.add(input_id)
             st.session_state.last_input = current_input
+            st.session_state.input_counter += 1
             send_message(current_input, model_choice)
             st.rerun()
             

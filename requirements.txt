@@ -7,3 +7,4 @@ langchain-openai>=0.1.0
 cohere>=4.0.0
 openai>=1.0.0
 python-dotenv>=1.0.0
+pytz>=2023.3
