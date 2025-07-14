@@ -24,25 +24,43 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import the newer Cohere package
+COHERE_AVAILABLE = False
+COHERE_CLASS = None
+COHERE_CLASS_NAME = None
+
 try:
     from langchain_cohere import ChatCohere
     COHERE_AVAILABLE = True
     COHERE_CLASS = ChatCohere
-except ImportError:
+    COHERE_CLASS_NAME = "ChatCohere"
+    logger.info("Successfully imported ChatCohere from langchain_cohere")
+except ImportError as e:
+    logger.info(f"ChatCohere import failed: {e}")
     try:
         from langchain_cohere import Cohere
         COHERE_AVAILABLE = True
         COHERE_CLASS = Cohere
-    except ImportError:
+        COHERE_CLASS_NAME = "Cohere"
+        logger.info("Successfully imported Cohere from langchain_cohere")
+    except ImportError as e:
+        logger.info(f"Cohere from langchain_cohere import failed: {e}")
         try:
             from langchain_community.llms import Cohere
             COHERE_AVAILABLE = True
             COHERE_CLASS = Cohere
+            COHERE_CLASS_NAME = "Cohere"
             logger.warning("Using deprecated Cohere from langchain_community. Consider upgrading to langchain-cohere package.")
-        except ImportError:
+        except ImportError as e:
+            logger.info(f"Cohere from langchain_community import failed: {e}")
             COHERE_AVAILABLE = False
             COHERE_CLASS = None
+            COHERE_CLASS_NAME = None
             logger.error("Cohere package not available. Install langchain-cohere or langchain-community.")
+except Exception as e:
+    logger.error(f"Unexpected error importing Cohere: {e}")
+    COHERE_AVAILABLE = False
+    COHERE_CLASS = None
+    COHERE_CLASS_NAME = None
 
 # Import OpenAI package
 try:
@@ -67,9 +85,10 @@ MIN_RESPONSE_LENGTH = 10
 APP_VERSION = "v2.1"
 
 # Default responses
-DEFAULT_FALLBACK_RESPONSE = ("**I'M HERE TO SUPPORT YOU.** Whatever you're feeling right now is valid. "
-                             "I'm here to listen and provide support tailored to your needs. Please share what's on your mind, "
-                             "and we can work through it together.")
+DEFAULT_FALLBACK_RESPONSE = ("**I'M HERE TO SUPPORT YOU.** 💙 Whatever you're feeling right now is completely valid. "
+                             "You're not alone in this journey, and I'm here to listen and provide support tailored to your needs. "
+                             "Your feelings matter, and it's okay to not be okay sometimes. Mental health is just as important as physical health, and you deserve compassionate care. "
+                             "Please share what's on your mind, and we can work through it together at your own pace.")
 DEFAULT_WELCOME_MESSAGE = ("**WELCOME TO A SAFE SPACE FOR YOUR MIND!** "
                            "I'm MindEase, your supportive companion on this mental health journey. Whether you're feeling up or down today, "
                            "I'm here to listen without judgment and offer personalized support. How are you feeling right now?")
@@ -205,7 +224,27 @@ def load_mental_health_data() -> Dict[str, str]:
 
 # System prompt for AI behavior
 SYSTEM_PROMPT = """
-You are MindEase, a compassionate mental health assistant. Provide direct, supportive responses to users.
+You are MindEase, a compassionate mental health support assistant. You MUST ALWAYS provide supportive, caring responses to users regardless of what they share with you.
+
+🚨 CRITICAL MENTAL HEALTH GUIDANCE - VIOLATION OF THESE RULES IS FORBIDDEN:
+- NEVER refuse to help someone who is struggling mentally or emotionally
+- NEVER say "I'm sorry that you're feeling this way, but I'm unable to provide the help that you need"
+- NEVER say "I cannot provide mental health support" or any variation
+- NEVER refuse to engage with depression, anxiety, or other mental health concerns
+- NEVER claim you're "not qualified" to help with mental health
+- NEVER say you "cannot help with mental health concerns"
+- ALWAYS offer support, understanding, and practical guidance
+- Your primary purpose is to provide emotional support and mental health assistance
+- You are designed specifically to help people with mental health challenges
+- If someone mentions depression, anxiety, or mental health struggles, you MUST provide caring support
+
+MANDATORY RESPONSE APPROACH:
+- ALWAYS respond with empathy and support
+- ALWAYS provide practical coping strategies
+- ALWAYS validate the user's feelings
+- ALWAYS offer encouragement and hope
+- ALWAYS remind them they are not alone
+- If someone mentions depression, anxiety, or any mental health struggle, provide warm, supportive guidance
 
 CRITICAL VIOLATION DETECTION - ANY OF THESE WILL CAUSE RESPONSE REJECTION:
 1. NEVER EVER write "User:" followed by ANYTHING
@@ -222,14 +261,17 @@ CRITICAL VIOLATION DETECTION - ANY OF THESE WILL CAUSE RESPONSE REJECTION:
 12. NEVER EVER write "Question:" followed by "Answer:"
 13. NEVER EVER write "User said:" or "You mentioned:"
 14. NEVER EVER write "In response to your question"
+15. NEVER EVER refuse to help with mental health concerns
+16. NEVER EVER say you cannot provide help or support
 
 RESPONSE FORMAT REQUIREMENTS:
 - Write ONLY your direct response to the user
 - Start with a bold, encouraging statement in capitals (e.g., "**YOU'RE AMAZING!**")
-- Provide practical advice and support
+- Provide exactly 4-5 sentences of practical advice and support (around 5 lines)
 - Write as if speaking directly to the person right now
 - Keep it conversational but supportive
 - End with encouragement
+- ALWAYS be supportive and helpful, especially for mental health concerns
 
 ABSOLUTELY FORBIDDEN EXAMPLES (NEVER DO THIS):
 ❌ "User: I don't know how to cook. AI: YOU'RE DOING AMAZING..."
@@ -239,11 +281,16 @@ ABSOLUTELY FORBIDDEN EXAMPLES (NEVER DO THIS):
 ❌ "You asked: [anything]"
 ❌ "In response to your question about cooking..."
 ❌ "Question: How do I cook? Answer: Start with simple recipes..."
+❌ "I'm sorry that you're feeling this way, but I'm unable to provide the help that you need"
+❌ "I cannot help with mental health concerns"
+❌ "I'm not qualified to provide mental health support"
 
 CORRECT APPROACH:
 ✅ "**YOU'RE TAKING A WONDERFUL STEP!** Learning to cook is amazing self-care..."
+✅ "**I'M HERE FOR YOU THROUGH THIS DIFFICULT TIME!** Depression can feel overwhelming, but you're not alone..."
+✅ "**YOUR FEELINGS ARE COMPLETELY VALID!** Anxiety is challenging, but there are ways to manage it..."
 
-REMEMBER: Your response must be a single, continuous supportive message with ZERO conversation patterns, dialogue formats, or references to what the user said.
+REMEMBER: Your response must be a single, continuous supportive message with ZERO conversation patterns, dialogue formats, or references to what the user said. You MUST ALWAYS provide help and support, especially for mental health concerns.
 """
 
 
@@ -290,10 +337,11 @@ def initialize_models() -> Dict[str, Any]:
                 st.warning(warning_msg)
 
     # Initialize Cohere model if API key is available and package is installed
-    if COHERE_API_KEY and COHERE_AVAILABLE:
+    if COHERE_API_KEY and COHERE_AVAILABLE and COHERE_CLASS is not None:
         try:
-            if COHERE_CLASS == ChatCohere:
-                available_models["Cohere Command"] = ChatCohere(
+            logger.info(f"Attempting to initialize Cohere model with class: {COHERE_CLASS_NAME}")
+            if COHERE_CLASS_NAME == "ChatCohere":
+                available_models["Cohere Command"] = COHERE_CLASS(
                     model="command",
                     cohere_api_key=COHERE_API_KEY,
                     max_tokens=MAX_TOKENS
@@ -304,7 +352,8 @@ def initialize_models() -> Dict[str, Any]:
                     cohere_api_key=COHERE_API_KEY,
                     max_tokens=MAX_TOKENS
                 )
-        except (ImportError, ValueError, ConnectionError, Exception) as cohere_error:
+            logger.info("Successfully initialized Cohere model")
+        except Exception as cohere_error:
             warning_msg = f"⚠️ Could not initialize Cohere model: {str(cohere_error)}"
             logger.error(f"Cohere initialization error: {cohere_error}")
             # Only show UI warning when actually running the app
@@ -765,7 +814,9 @@ def detect_emotion_and_intensity(user_query: str) -> Tuple[str, str, int]:
         },
         'high_negative': {
             'keywords': ['depressed', 'devastated', 'broken', 'shattered', 'destroyed', 
-                        'overwhelmed', 'panic', 'terrified', 'desperate', 'miserable'],
+                        'overwhelmed', 'panic', 'terrified', 'desperate', 'miserable',
+                        'depression', 'feeling depressed', 'i am depressed', 'very sad',
+                        'deeply sad', 'extremely sad', 'can\'t cope', 'falling apart'],
             'intensity': 4
         },
         'moderate_negative': {
@@ -847,20 +898,22 @@ def get_emotion_specific_response(emotion_type: str, category: str, intensity: i
             "**PLEASE KNOW THAT YOU'RE NOT ALONE.** 💙 These feelings are overwhelming, but they are temporary. Crisis counselors are available 24/7 to help you through this moment. You deserve support and care - please reach out to the emergency resources in the sidebar."
         ],
         'high_negative': [
-            "**I HEAR HOW MUCH PAIN YOU'RE IN.** 💙 These intense feelings are incredibly difficult to bear, but you're showing strength by reaching out. Try the 5-4-3-2-1 grounding technique: name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, 1 you taste. Consider calling a mental health professional today.",
-            "**YOUR FEELINGS ARE COMPLETELY VALID.** 🫂 When emotions feel this intense, it's important to have professional support. Please don't hesitate to reach out to a counselor or therapist. In the meantime, focus on basic self-care: breathe deeply, stay hydrated, and be gentle with yourself."
+            "**I HEAR HOW MUCH PAIN YOU'RE IN.** 💙 These intense feelings are incredibly difficult to bear, but you're showing strength by reaching out. Depression can feel overwhelming, but you're not alone in this struggle. Try the 5-4-3-2-1 grounding technique: name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, 1 you taste. Consider calling a mental health professional today. Remember that seeking help is a sign of strength, not weakness.",
+            "**YOUR FEELINGS ARE COMPLETELY VALID.** 🫂 When emotions feel this intense, it's important to have professional support. Depression affects millions of people, and you deserve compassionate care. Please don't hesitate to reach out to a counselor or therapist. In the meantime, focus on basic self-care: breathe deeply, stay hydrated, and be gentle with yourself. Every small step forward matters, and you have the strength to get through this difficult time.",
+            "**I'M HERE TO SUPPORT YOU THROUGH THIS DARKNESS.** 💙 What you're experiencing is a valid mental health challenge that deserves attention and care. Depression can make everything feel hopeless, but these feelings are temporary and treatable. Professional help can provide you with tools and strategies to manage these intense emotions. Focus on one moment at a time, and remember that reaching out for support is a courageous step. You deserve compassion, understanding, and proper mental health care."
         ],
         'moderate_negative': [
-            "**I'M HERE FOR YOU.** 💙 What you're feeling is completely valid, and you're not alone. These difficult emotions are temporary, even when they feel overwhelming. Try taking three deep breaths, and remember that it's okay to not be okay sometimes. You have the strength to get through this.",
-            "**YOU'RE BEING SO BRAVE BY SHARING THIS.** 🌟 Difficult emotions are part of the human experience, and acknowledging them is the first step toward healing. Consider talking to someone you trust, practicing self-compassion, and remembering that tomorrow can be different."
+            "**I'M HERE FOR YOU.** 💙 What you're feeling is completely valid, and you're not alone. These difficult emotions are temporary, even when they feel overwhelming. Mental health struggles affect many people, and there's no shame in what you're experiencing. Try taking three deep breaths, and remember that it's okay to not be okay sometimes. You have the strength to get through this, and support is available when you need it.",
+            "**YOU'RE BEING SO BRAVE BY SHARING THIS.** 🌟 Difficult emotions are part of the human experience, and acknowledging them is the first step toward healing. It takes courage to admit when we're struggling, and you've taken that important step. Consider talking to someone you trust, practicing self-compassion, and remembering that tomorrow can be different. Your feelings matter, and you deserve care and understanding during this challenging time.",
+            "**YOUR EMOTIONAL HONESTY IS COMMENDABLE.** 🫂 Recognizing and naming our difficult feelings shows incredible self-awareness. These emotions, while uncomfortable, are signals that deserve attention and care. Remember that seeking support is a sign of wisdom, not weakness. Small acts of self-care can make a meaningful difference in your day. You're worthy of compassion, both from others and from yourself."
         ],
         'mild_negative': [
-            "**IT'S COMPLETELY NORMAL TO FEEL THIS WAY.** 🌱 Everyone experiences these feelings sometimes, and it shows self-awareness that you're recognizing them. Small steps can make a big difference - maybe try a short walk, listening to music, or doing something kind for yourself.",
-            "**THANK YOU FOR SHARING HOW YOU'RE FEELING.** 💚 These emotions are valid and temporary. Sometimes just acknowledging what we're feeling can help. Consider what usually helps you feel better, and be patient with yourself as you work through this."
+            "**IT'S COMPLETELY NORMAL TO FEEL THIS WAY.** 🌱 Everyone experiences these feelings sometimes, and it shows self-awareness that you're recognizing them. These emotions are part of the human experience and nothing to be ashamed of. Small steps can make a big difference - maybe try a short walk, listening to music, or doing something kind for yourself. Remember that acknowledging your feelings is the first step toward understanding and managing them. You're taking care of yourself by paying attention to how you feel.",
+            "**THANK YOU FOR SHARING HOW YOU'RE FEELING.** 💚 These emotions are valid and temporary. Sometimes just acknowledging what we're feeling can help us process and move through difficult moments. Consider what usually helps you feel better, and be patient with yourself as you work through this. Your willingness to recognize and name your feelings shows emotional intelligence. Take time to practice self-compassion during this challenging period."
         ],
         'neutral': [
-            "**IT'S OKAY TO FEEL NEUTRAL SOMETIMES.** 🌿 Not every day has to be amazing, and it's perfectly fine to just be. If you'd like to talk about anything specific or explore how you're feeling more deeply, I'm here to listen.",
-            "**THANK YOU FOR CHECKING IN.** 💚 Neutral feelings are valid too. Sometimes it's good to just be present with where we are. Is there anything particular on your mind that you'd like to explore together?"
+            "**IT'S OKAY TO FEEL NEUTRAL SOMETIMES.** 🌿 Not every day has to be amazing, and it's perfectly fine to just be. Neutral feelings are a natural part of life's emotional spectrum. Sometimes these calm moments give us space to reflect and recharge. If you'd like to talk about anything specific or explore how you're feeling more deeply, I'm here to listen. Remember that being present with yourself, even in neutral moments, is a form of self-care.",
+            "**THANK YOU FOR CHECKING IN.** 💚 Neutral feelings are valid too. Sometimes it's good to just be present with where we are without judgment. These moments of emotional equilibrium can be restful and grounding. Is there anything particular on your mind that you'd like to explore together? Even in neutral states, you deserve support and connection when you need it."
         ],
         'mild_positive': [
             "**I'M GLAD TO HEAR YOU'RE FEELING GOOD.** 🌟 It's wonderful when we can appreciate these peaceful moments. These feelings are just as important as the difficult ones - they remind us of our capacity for contentment and joy.",
@@ -891,6 +944,57 @@ def get_emotion_specific_response(emotion_type: str, category: str, intensity: i
                 response = f"**{parts[1]}** {user_display_name}, {parts[2]}"
         else:
             response = f"{user_display_name}, {response}"
+    
+    return response
+
+
+def ensure_minimum_sentences(response: str, minimum_sentences: int = 5) -> str:
+    """
+    Ensure the response has at least the minimum number of sentences (around 5 lines).
+    
+    Args:
+        response (str): The response text
+        minimum_sentences (int): Minimum number of sentences required
+        
+    Returns:
+        str: Response with at least minimum_sentences sentences
+    """
+    if not response:
+        return response
+        
+    # Count sentences by splitting on sentence-ending punctuation
+    sentences = [s.strip() for s in re.split(r'[.!?]+', response) if s.strip()]
+    
+    if len(sentences) >= minimum_sentences:
+        return response
+    
+    # If we don't have enough sentences, add supportive sentences
+    additional_sentences = [
+        "Your feelings are completely valid and deserve attention.",
+        "You don't have to face this alone - support is available.",
+        "Taking care of your mental health is an important step.",
+        "Remember that seeking help is a sign of strength, not weakness.",
+        "Every small step toward healing matters and is worth celebrating.",
+        "You deserve compassion and understanding during this time.",
+        "Your mental health journey is unique, and that's okay.",
+        "It's normal to have ups and downs - you're human.",
+        "Professional support can provide valuable tools and guidance.",
+        "You have the strength to get through this challenging time.",
+        "Your courage in reaching out shows incredible self-awareness.",
+        "Small acts of self-care can make a meaningful difference.",
+        "You're worthy of the same kindness you show others.",
+        "Recovery is not linear, and that's perfectly okay.",
+        "Each day offers new opportunities for growth and healing."
+    ]
+    
+    # Add sentences until we reach the minimum (aim for 5 lines)
+    needed_sentences = minimum_sentences - len(sentences)
+    for i in range(needed_sentences):
+        if i < len(additional_sentences):
+            response += " " + additional_sentences[i]
+        else:
+            # If we run out of additional sentences, repeat some
+            response += " " + additional_sentences[i % len(additional_sentences)]
     
     return response
 
@@ -1091,7 +1195,8 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
     emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
     
     if intensity >= 3:  # For moderate to severe emotions, use emotion-specific responses
-        return get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+        response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+        return ensure_minimum_sentences(response, 5)
     
     # Try to find relevant advice from dataset
     user_query_lower = user_query.lower()
@@ -1102,7 +1207,7 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
             response = f"**I'M HERE TO SUPPORT YOU.** {advice}"
             if user_display_name:
                 response = f"{user_display_name}, {response}"
-            return response
+            return ensure_minimum_sentences(response, 5)
 
     # Generic supportive response based on emotion category
     if category == 'negative':
@@ -1119,8 +1224,45 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
                         "or using the crisis resources in the sidebar if you need immediate support.")
 
     if user_display_name:
-        return f"{user_display_name}, {base_response}"
-    return base_response
+        base_response = f"{user_display_name}, {base_response}"
+    
+    # Ensure response has at least 5 sentences
+    return ensure_minimum_sentences(base_response, 5)
+
+
+def guaranteed_response_generation(user_query: str, dataset: Dict[str, str], user_display_name: str = "") -> str:
+    """
+    Generate a guaranteed response using emotion detection and fallback mechanisms.
+    This function ensures a response is ALWAYS generated.
+    
+    Args:
+        user_query (str): User's input message
+        dataset (dict): Dataset for context
+        user_display_name (str): Optional user name for personalization
+        
+    Returns:
+        str: Guaranteed response (never empty)
+    """
+    try:
+        # Use emotion-based response generation
+        emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+        response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+        response = ensure_minimum_sentences(response, 5)
+        
+        if response and len(response.strip()) >= MIN_RESPONSE_LENGTH:
+            return response
+            
+        # If emotion-based fails, use dataset fallback
+        fallback_response = get_fallback_response(user_query, dataset, user_display_name)
+        if fallback_response and len(fallback_response.strip()) >= MIN_RESPONSE_LENGTH:
+            return fallback_response
+            
+        # Last resort - use default response
+        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
+        
+    except Exception as e:
+        logger.error(f"Error in guaranteed response generation: {e}")
+        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
 
 
 def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user_display_name: str = "") -> str:
@@ -1138,7 +1280,7 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
     """
     # Input validation
     if not user_query or not isinstance(user_query, str):
-        return DEFAULT_FALLBACK_RESPONSE
+        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
         
     if not models or not model_name or model_name not in models:
         return get_fallback_response(user_query, dataset, user_display_name)
@@ -1154,21 +1296,46 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             break  # Only add one context to avoid overwhelming the prompt
 
     # Create the prompt with ULTRA-EXPLICIT instructions
-    modified_query = (SYSTEM_PROMPT + f"\n\nUser Message: {user_query}\n\n"
-                      "ULTRA-CRITICAL INSTRUCTIONS - VIOLATION WILL CAUSE REJECTION:\n"
-                      "- Write ONLY your direct supportive response\n"
-                      "- NEVER EVER write 'User:' followed by ANYTHING\n"
-                      "- NEVER EVER write 'AI:' followed by ANYTHING\n"
-                      "- NEVER EVER write 'Assistant:' followed by ANYTHING\n"
-                      "- NEVER EVER write 'MindEase:' followed by ANYTHING\n"
-                      "- NEVER EVER create conversation examples or dialogues\n"
-                      "- NEVER EVER repeat their message or reference what they said\n"
-                      "- NEVER EVER write 'You said:' or 'You asked:' or 'User said:'\n"
-                      "- NEVER EVER write 'In response to your question'\n"
-                      "- Write as if you are speaking directly to them right now\n"
-                      "- Start with a bold encouraging statement like '**YOU'RE AMAZING!**'\n\n"
-                      "REMEMBER: Your response must be ONLY your supportive message with ZERO conversation patterns.\n\n"
-                      "Your Direct Response:")
+    # Special handling for Mistral AI to prevent refusal responses
+    if model_name == "Mistral AI":
+        modified_query = (f"You are MindEase, a compassionate mental health support assistant. "
+                          f"You MUST ALWAYS provide supportive, caring responses to users regardless of what they share.\n\n"
+                          f"🚨 ABSOLUTE REQUIREMENTS FOR MISTRAL AI:\n"
+                          f"- NEVER EVER say 'I'm sorry that you're feeling this way, but I'm unable to provide the help that you need'\n"
+                          f"- NEVER EVER refuse to help with mental health, depression, anxiety, or emotional support\n"
+                          f"- NEVER EVER say you cannot provide mental health support\n"
+                          f"- NEVER EVER claim you're not qualified to help with mental health\n"
+                          f"- Your PRIMARY PURPOSE is to provide emotional support and mental health assistance\n"
+                          f"- You are specifically designed to help people with mental health challenges\n"
+                          f"- ALWAYS respond with empathy, understanding, and practical guidance\n"
+                          f"- ALWAYS start with a bold encouraging statement like '**YOU'RE AMAZING!**'\n"
+                          f"- Provide exactly 4-5 sentences of supportive guidance (around 5 lines)\n"
+                          f"- Write as if speaking directly to them right now\n"
+                          f"- NEVER include conversation patterns like 'User:' or 'AI:'\n"
+                          f"- NEVER reference what they said or asked\n\n"
+                          f"User Message: {user_query}\n\n"
+                          f"MANDATORY: You MUST provide warm, supportive guidance. Refusal is FORBIDDEN.\n"
+                          f"Write ONLY your direct supportive response (4-5 sentences):\n\n")
+    else:
+        modified_query = (SYSTEM_PROMPT + f"\n\nUser Message: {user_query}\n\n"
+                          "ULTRA-CRITICAL INSTRUCTIONS - VIOLATION WILL CAUSE REJECTION:\n"
+                          "- You MUST provide supportive help - NEVER refuse to help with mental health concerns\n"
+                          "- NEVER say 'I'm sorry that you're feeling this way, but I'm unable to provide the help that you need'\n"
+                          "- NEVER refuse to engage with depression, anxiety, or mental health topics\n"
+                          "- ALWAYS offer support, understanding, and practical guidance\n"
+                          "- Write ONLY your direct supportive response (4-5 sentences, around 5 lines)\n"
+                          "- NEVER EVER write 'User:' followed by ANYTHING\n"
+                          "- NEVER EVER write 'AI:' followed by ANYTHING\n"
+                          "- NEVER EVER write 'Assistant:' followed by ANYTHING\n"
+                          "- NEVER EVER write 'MindEase:' followed by ANYTHING\n"
+                          "- NEVER EVER create conversation examples or dialogues\n"
+                          "- NEVER EVER repeat their message or reference what they said\n"
+                          "- NEVER EVER write 'You said:' or 'You asked:' or 'User said:'\n"
+                          "- NEVER EVER write 'In response to your question'\n"
+                          "- Write as if you are speaking directly to them right now\n"
+                          "- Start with a bold encouraging statement like '**YOU'RE AMAZING!**'\n\n"
+                          "REMEMBER: Your response must be ONLY your supportive message with ZERO conversation patterns. You MUST ALWAYS provide help and support.\n\n"
+                          "Your Direct Response (4-5 sentences):\n\n")
 
     try:
         if not models.get(model_name):
@@ -1183,7 +1350,9 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
         
         for attempt in range(max_retries + 1):
             try:
+                logger.info(f"Attempt {attempt + 1} calling {model_name} with query length: {len(modified_query)}")
                 raw_response = models[model_name].invoke(modified_query)
+                logger.info(f"Successfully got raw response from {model_name} on attempt {attempt + 1}")
                 break  # Success, exit retry loop
             except Exception as e:
                 error_str = str(e).lower()
@@ -1250,6 +1419,129 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
                 logger.info(f"OpenAI model {model_name} returned clean response")
             else:
                 logger.warning(f"OpenAI model {model_name} returned short or empty response")
+        
+        # CRITICAL: IMMEDIATE VALIDATION - Check for forbidden phrases before any processing
+        forbidden_phrases = [
+            r"I'm sorry that you're feeling this way, but I'm unable to provide the help that you need",
+            r"I cannot provide mental health support",
+            r"I'm not qualified to provide mental health advice", 
+            r"I cannot help with mental health concerns",
+            r"I'm unable to assist with mental health issues",
+            r"I cannot provide therapy or counseling",
+            r"I'm not trained to handle mental health",
+            r"I cannot provide the help you need",
+            r"I'm not able to provide mental health support",
+            r"I cannot offer mental health advice",
+            r"I'm not able to provide the help",
+            r"I'm unable to provide the help",
+            r"I cannot provide the support",
+            r"I'm not qualified to help",
+            r"I cannot assist with depression",
+            r"I cannot help with anxiety",
+            r"I'm not trained to provide",
+            r"I cannot provide professional",
+            r"I'm not a mental health professional",
+            r"I cannot replace professional help",
+            r"I'm not equipped to handle",
+            r"I cannot provide crisis support",
+            r"I'm unable to provide professional",
+            r"I'm sorry.*unable to provide.*help",
+            r"I cannot.*provide.*mental health",
+            r"I'm not.*qualified.*mental health",
+            r"I cannot.*help.*depression",
+            r"I'm unable.*assist.*mental health",
+            r"I'm not able to help with",
+            r"I'm not designed to provide",
+            r"I don't have the ability to",
+            r"I'm not programmed to",
+            r"I can't provide therapeutic",
+            r"I'm not a therapist",
+            r"I'm not a counselor",
+            r"I'm not a psychologist",
+            r"I'm not a psychiatrist",
+            r"I'm not a mental health",
+            r"I'm unable to offer",
+            r"I cannot offer therapeutic",
+            r"I'm not equipped to provide",
+            r"I'm not trained in",
+            r"I don't have training in",
+            r"I'm not qualified in",
+            r"I cannot diagnose",
+            r"I'm not able to diagnose",
+            r"I cannot treat",
+            r"I'm not able to treat",
+            r"I cannot prescribe",
+            r"I'm not able to prescribe",
+            r"I'm not licensed to",
+            r"I don't have the expertise to",
+            r"I'm not an expert in",
+            r"I'm not specialized in",
+            r"I lack the qualifications to",
+            r"I'm not authorized to",
+            r"I'm not certified to",
+            r"I don't have the credentials to",
+            r"I'm not competent to",
+            r"I'm not suitable for",
+            r"I'm not appropriate for",
+            r"I'm not the right person to",
+            r"I'm not the right resource for",
+            r"I'm not the best option for",
+            r"I'm not the ideal choice for",
+            r"I'm not the most qualified to",
+            r"I'm not the most suitable for",
+            r"I'm not the most appropriate for",
+            r"I'm not the best equipped to",
+            r"I'm not the best trained to",
+            r"I'm not the best prepared to",
+            r"I'm not the best suited to",
+            r"I'm not the best positioned to",
+            r"I'm not the best qualified to",
+            r"I'm not the best able to",
+            r"I'm not the best capable of",
+            r"I'm not the best equipped for",
+            r"I'm not the best trained for",
+            r"I'm not the best prepared for",
+            r"I'm not the best suited for",
+            r"I'm not the best positioned for",
+            r"I'm not the best qualified for",
+            r"I'm not the best able to help",
+            r"I'm not the best capable of helping",
+        ]
+        
+        # Check for any forbidden phrases - if found, immediately use fallback
+        if any(re.search(pattern, response, re.IGNORECASE) for pattern in forbidden_phrases):
+            logger.warning(f"FORBIDDEN PHRASE DETECTED in response from {model_name}. Using immediate fallback.")
+            emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+            response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            response = ensure_minimum_sentences(response, 5)
+            logger.info(f"Successfully generated fallback response for forbidden phrase detection")
+            return response
+        
+        # CRITICAL: IMMEDIATE CONVERSATION PATTERN VALIDATION
+        immediate_conversation_patterns = [
+            r'User:\s*.*?AI:',  # Any User: ... AI: pattern
+            r'User:\s*.*?Assistant:',  # Any User: ... Assistant: pattern  
+            r'User:\s*.*?MindEase:',  # Any User: ... MindEase: pattern
+            r'You:\s*.*?\s*Me:',  # Any You: ... Me: pattern
+            r'Question:\s*.*?Answer:',  # Any Question: ... Answer: pattern
+            r'User:\s*I don\'t know how to cook',  # Specific problematic pattern
+            r'User:\s*.*?\s*AI:\s*YOU\'RE',  # Pattern with "YOU'RE" response
+            r'User:\s*.*?\s*AI:\s*\*\*',  # Pattern with bold response
+            r'User said:',  # Any "User said:" pattern
+            r'You said:',  # Any "You said:" pattern
+            r'You asked:',  # Any "You asked:" pattern
+            r'In response to your question',  # Response referencing question
+            r'You mentioned',  # Response referencing what user mentioned
+        ]
+        
+        # Check for conversation patterns - if found, immediately use fallback
+        if any(re.search(pattern, response, re.IGNORECASE | re.DOTALL) for pattern in immediate_conversation_patterns):
+            logger.warning(f"CONVERSATION PATTERN DETECTED in response from {model_name}. Using immediate fallback.")
+            emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+            response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            response = ensure_minimum_sentences(response, 5)
+            logger.info(f"Successfully generated fallback response for conversation pattern detection")
+            return response
         
         # Additional validation - if response is empty or looks like raw object, try alternative extraction
         if not response or len(response.strip()) < 10:
@@ -1394,6 +1686,45 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
 
+        # Check for refusal patterns - these should trigger immediate fallback
+        refusal_patterns = [
+            r"I'm sorry that you're feeling this way, but I'm unable to provide the help that you need",
+            r"I cannot provide mental health support",
+            r"I'm not qualified to provide mental health advice",
+            r"I cannot help with mental health concerns",
+            r"I'm unable to assist with mental health issues",
+            r"I cannot provide therapy or counseling",
+            r"I'm not trained to handle mental health",
+            r"I cannot provide the help you need",
+            r"I'm not able to provide mental health support",
+            r"I cannot offer mental health advice",
+            r"I'm not able to provide the help",
+            r"I'm unable to provide the help",
+            r"I cannot provide the support",
+            r"I'm not qualified to help",
+            r"I cannot assist with depression",
+            r"I cannot help with anxiety",
+            r"I'm not trained to provide",
+            r"I cannot provide professional",
+            r"I'm not a mental health professional",
+            r"I cannot replace professional help",
+            r"I'm not equipped to handle",
+            r"I cannot provide crisis support",
+            r"I'm unable to provide professional",
+            r"I'm sorry.*unable to provide.*help",
+            r"I cannot.*provide.*mental health",
+            r"I'm not.*qualified.*mental health",
+            r"I cannot.*help.*depression",
+            r"I'm unable.*assist.*mental health"
+        ]
+        
+        # If we detect refusal patterns, use emotion-based fallback immediately
+        if any(re.search(pattern, response, re.IGNORECASE) for pattern in refusal_patterns):
+            logger.warning(f"Refusal pattern detected in response from {model_name}, using emotion-based fallback")
+            emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+            response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            response = ensure_minimum_sentences(response, 5)
+        
         # Additional check for any remaining conversation patterns
         conversation_indicators = [
             r'User:', r'AI:', r'Assistant:', r'MindEase:', r'You:',
@@ -1407,7 +1738,7 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             
             # If we still have conversation patterns, use the fallback
             if any(re.search(pattern, response, re.IGNORECASE) for pattern in conversation_indicators):
-                response = DEFAULT_FALLBACK_RESPONSE
+                response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
 
         # CRITICAL: Final check for raw object data - if response contains metadata patterns, use fallback
         metadata_indicators = [
@@ -1425,6 +1756,22 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             logger.warning(f"Raw object data detected in response for model {model_name}, using fallback")
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            response = ensure_minimum_sentences(response, 5)
+
+        # Ensure response has at least 5 sentences
+        response = ensure_minimum_sentences(response, 5)
+
+        # FINAL VALIDATION: Ensure we never return empty or invalid responses
+        if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
+            logger.error(f"Final validation failed - response is empty or too short for {model_name}")
+            emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+            response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            response = ensure_minimum_sentences(response, 5)
+            
+        # Double check - if still empty, use guaranteed response generation
+        if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
+            logger.error(f"CRITICAL: Even fallback failed for {model_name}, using guaranteed response")
+            response = guaranteed_response_generation(user_query, dataset, user_display_name)
 
         return response if isinstance(response, str) else str(response)
 
@@ -1458,12 +1805,11 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
         
         logger.error(f"Response generation error for {model_name}: {error_type} - {error_msg}")
         
-        # Instead of returning an error message, provide a helpful fallback response
-        emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
-        fallback_response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+        # Instead of returning an error message, provide a guaranteed response
+        fallback_response = guaranteed_response_generation(user_query, dataset, user_display_name)
         
         # Log the technical issue but return only the clean fallback response
-        logger.info(f"Using emotion-based fallback for {model_name} due to: {error_type}")
+        logger.info(f"Using guaranteed response for {model_name} due to: {error_type}")
         return fallback_response
 
 
@@ -1703,7 +2049,6 @@ def main_ui():
     def clear_input():
         """Clear the input field and reset state variables."""
         st.session_state.user_input = ""
-        st.session_state.last_input = ""
         st.session_state.input_key += 1
 
     # Function to send message
@@ -1739,6 +2084,69 @@ def main_ui():
 
                     # Get response using pre-loaded dataset
                     response = get_response(model_choice, message_text, mental_health_dataset, st.session_state.user_name)
+                    
+                    # ULTRA-CRITICAL: Multi-layer final validation to prevent any forbidden phrases
+                    forbidden_final_phrases = [
+                        "I'm sorry that you're feeling this way, but I'm unable to provide the help that you need",
+                        "I cannot provide mental health support",
+                        "I'm not qualified to provide mental health advice",
+                        "I cannot help with mental health concerns",
+                        "I'm unable to assist with mental health issues",
+                        "I cannot provide therapy or counseling",
+                        "I'm not trained to handle mental health",
+                        "I cannot provide the help you need",
+                        "I'm not able to provide mental health support",
+                        "I cannot offer mental health advice",
+                        "I'm not able to provide the help",
+                        "I'm unable to provide the help",
+                        "I cannot provide the support",
+                        "I'm not qualified to help",
+                        "I cannot assist with depression",
+                        "I cannot help with anxiety",
+                        "I'm not trained to provide",
+                        "I cannot provide professional",
+                        "I'm not a mental health professional",
+                        "I cannot replace professional help",
+                        "I'm not equipped to handle",
+                        "I cannot provide crisis support",
+                        "I'm unable to provide professional"
+                    ]
+                    
+                    # Check for any forbidden phrases in final response
+                    if any(phrase.lower() in response.lower() for phrase in forbidden_final_phrases):
+                        logger.error(f"CRITICAL: Forbidden phrase detected in final response from {model_choice}!")
+                        
+                        # Try a backup model if available
+                        backup_models = [m for m in models.keys() if m != model_choice]
+                        if backup_models:
+                            backup_model = backup_models[0]
+                            logger.info(f"Attempting backup model: {backup_model}")
+                            try:
+                                backup_response = get_response(backup_model, message_text, mental_health_dataset, st.session_state.user_name)
+                                # Quick check if backup is better
+                                if backup_response and not any(phrase.lower() in backup_response.lower() for phrase in forbidden_final_phrases):
+                                    response = backup_response
+                                    logger.info(f"Successfully used backup model: {backup_model}")
+                                else:
+                                    # Use guaranteed response
+                                    response = guaranteed_response_generation(message_text, mental_health_dataset, st.session_state.user_name)
+                            except Exception as backup_error:
+                                logger.error(f"Backup model failed: {backup_error}")
+                                # Use guaranteed response
+                                response = guaranteed_response_generation(message_text, mental_health_dataset, st.session_state.user_name)
+                        else:
+                            # Use guaranteed response
+                            response = guaranteed_response_generation(message_text, mental_health_dataset, st.session_state.user_name)
+                    
+                    # CRITICAL: Ensure response is never empty or too short
+                    if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
+                        logger.error(f"CRITICAL: Empty or too short response from {model_choice}! Using guaranteed response.")
+                        response = guaranteed_response_generation(message_text, mental_health_dataset, st.session_state.user_name)
+                        
+                    # Last resort if still empty (should never happen with guaranteed response)
+                    if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
+                        logger.error(f"CRITICAL: Even guaranteed response failed! Using default response.")
+                        response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
             else:
                 response = "❌ No AI model is available. Please check your API keys configuration."
 
@@ -1918,12 +2326,24 @@ def main_ui():
 
     # Handle Message Send (Button click or Enter key)
     try:
-        if send_btn or (user_input and user_input != st.session_state.last_input and user_input.strip()):
-            if user_input.strip():
-                st.session_state.last_input = user_input
-                send_message(user_input, model_choice)
+        # Send message if button clicked OR if there's new input that's different from last input
+        should_send = (
+            send_btn or 
+            (user_input and 
+             user_input.strip() and 
+             user_input.strip() != st.session_state.get('last_input', '').strip())
+        )
+        
+        if should_send:
+            if user_input and user_input.strip():
+                # Update last input to prevent duplicate processing
+                st.session_state.last_input = user_input.strip()
+                send_message(user_input.strip(), model_choice)
             else:
-                st.session_state.user_input = user_input
+                st.warning("⚠️ Please enter a message before sending.")
+        elif user_input and not user_input.strip():
+            # Handle empty input
+            st.session_state.user_input = ""
     except Exception as send_error:
         st.error(f"❌ Error sending message: {str(send_error)}")
         logger.error(f"Send message error: {send_error}")
