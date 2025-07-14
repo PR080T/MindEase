@@ -2565,9 +2565,6 @@ def main_ui():
                 message_timestamp = get_ist_timestamp()
                 st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(message_text)}", message_timestamp))
 
-                # Clear input immediately for better UX
-                clear_input()
-
                 # Initialize response variable
                 response = None
 
@@ -2676,6 +2673,9 @@ def main_ui():
                 st.session_state.messages.append(
                     ("ai-message", f"<strong>🤖 MindEase ({model_display}):</strong> {response}", response_timestamp))
 
+                # Clear input after successful processing
+                clear_input()
+
                 # Show success feedback
                 st.success("✨ Response generated! Continue the conversation below.")
 
@@ -2705,6 +2705,9 @@ def main_ui():
                 
                 st.session_state.messages.append(
                     ("ai-message", f"<strong>🤖 MindEase (Emergency Support):</strong> {emergency_response}", response_timestamp))
+                
+                # Clear input after emergency response
+                clear_input()
                 
                 # Show error message to user
                 st.error("⚠️ I encountered a technical issue, but I'm still here to support you. Please try again.")
@@ -2846,8 +2849,8 @@ def main_ui():
             help="Express yourself freely - I'm here to listen and support you"
         )
         
-        # Update session state with current input value
-        if user_input != st.session_state.user_input:
+        # Update session state with current input value - ensure synchronization
+        if user_input is not None and user_input != st.session_state.user_input:
             st.session_state.user_input = user_input
             
     except Exception as input_error:
@@ -2900,8 +2903,12 @@ def main_ui():
             }
             st.session_state.processed_inputs = recent_inputs
         
-        # Get the current input value
-        current_input = user_input.strip() if user_input else ""
+        # Get the current input value - prioritize session state over widget value
+        current_input = ""
+        if user_input and user_input.strip():
+            current_input = user_input.strip()
+        elif st.session_state.user_input and st.session_state.user_input.strip():
+            current_input = st.session_state.user_input.strip()
         
         # Improved duplicate prevention logic
         def should_process_input(input_text: str) -> bool:
@@ -2938,6 +2945,9 @@ def main_ui():
         
         # Check if send button was clicked
         if send_btn:
+            # Debug logging to help troubleshoot
+            logger.info(f"Send button clicked. user_input: '{user_input}', session_state.user_input: '{st.session_state.user_input}', current_input: '{current_input}'")
+            
             if current_input:
                 if should_process_input(current_input):
                     # Create unique identifier and process
@@ -2949,6 +2959,7 @@ def main_ui():
                     # Enhanced error handling for send_message
                     try:
                         send_message(current_input, model_choice)
+                        # Input will be cleared inside send_message after successful processing
                         st.rerun()
                     except Exception as send_error:
                         logger.error(f"Send message failed for button click: {send_error}")
@@ -2981,6 +2992,7 @@ def main_ui():
             # Enhanced error handling for auto-send
             try:
                 send_message(current_input, model_choice)
+                # Input will be cleared inside send_message after successful processing
                 st.rerun()
             except Exception as send_error:
                 logger.error(f"Send message failed for auto-send: {send_error}")
