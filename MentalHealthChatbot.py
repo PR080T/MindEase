@@ -11,6 +11,7 @@ import os
 import random
 import re
 import time
+import threading
 from datetime import datetime
 from typing import Dict, Optional, Tuple, Union, Any
 import pytz
@@ -1614,6 +1615,42 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
     return ensure_minimum_sentences(base_response, 5, emotion_type)
 
 
+def timeout_wrapper(func, timeout_seconds=30):
+    """
+    Wrapper function to add timeout to AI model calls.
+    
+    Args:
+        func: Function to execute
+        timeout_seconds: Timeout in seconds (default 30)
+        
+    Returns:
+        Result of function or raises TimeoutError
+    """
+    result = [None]
+    exception = [None]
+    
+    def target():
+        try:
+            result[0] = func()
+        except Exception as e:
+            exception[0] = e
+    
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout_seconds)
+    
+    if thread.is_alive():
+        # Thread is still running, timeout occurred
+        logger.error(f"AI model call timed out after {timeout_seconds} seconds")
+        raise TimeoutError(f"AI model call timed out after {timeout_seconds} seconds")
+    
+    if exception[0]:
+        raise exception[0]
+    
+    return result[0]
+
+
 def guaranteed_response_generation(user_query: str, dataset: Dict[str, str], user_display_name: str = "") -> str:
     """
     Generate a guaranteed response using emotion detection and fallback mechanisms.
@@ -1762,11 +1799,31 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
         for attempt in range(max_retries + 1):
             try:
                 logger.info(f"Attempt {attempt + 1} calling {model_name} with query length: {len(modified_query)}")
-                raw_response = models[model_name].invoke(modified_query)
+                
+                # Use timeout wrapper to prevent hanging
+                def model_call():
+                    return models[model_name].invoke(modified_query)
+                
+                # Set timeout based on model type (some models are slower)
+                timeout_seconds = 45 if model_name in ["DeepSeek R1", "LLaMA Vision"] else 30
+                raw_response = timeout_wrapper(model_call, timeout_seconds)
+                
                 logger.info(f"Successfully got raw response from {model_name} on attempt {attempt + 1}")
                 break  # Success, exit retry loop
             except Exception as e:
                 error_str = str(e).lower()
+                
+                # Handle timeout errors specifically
+                if isinstance(e, TimeoutError) or "timed out" in error_str:
+                    logger.warning(f"Timeout occurred for {model_name} on attempt {attempt + 1}")
+                    if attempt < max_retries:
+                        logger.info(f"Retrying {model_name} after timeout...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                    else:
+                        logger.error(f"Final timeout for {model_name}, using fallback")
+                        raise e
                 
                 # Enhanced error detection for OpenAI models
                 openai_retryable_errors = [
@@ -2488,36 +2545,60 @@ def main_ui():
     # Function to send message
     def send_message(message_text: str, model_choice: str) -> None:
         """
-        Send a message and get AI response.
+        Send a message and get AI response with comprehensive error handling.
 
         Args:
             message_text (str): The message text to send
             model_choice (str): The selected AI model
         """
-        # Input validation and sanitization
-        is_valid, error_message = validate_user_input(message_text)
-        if not is_valid:
-            st.error(error_message)
-            return
+        try:
+            # Input validation and sanitization
+            is_valid, error_message = validate_user_input(message_text)
+            if not is_valid:
+                st.error(error_message)
+                return
 
-        message_text = message_text.strip()
+            message_text = message_text.strip()
 
-        if message_text:
-            # Add user message immediately
-            message_timestamp = get_ist_timestamp()
-            st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(message_text)}", message_timestamp))
+            if message_text:
+                # Add user message immediately
+                message_timestamp = get_ist_timestamp()
+                st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(message_text)}", message_timestamp))
 
-            # Clear input immediately for better UX
-            clear_input()
+                # Clear input immediately for better UX
+                clear_input()
 
-            # Show processing message
-            if model_choice:
-                with st.spinner(f"🤖 MindEase ({model_choice}) is crafting a thoughtful response..."):
-                    # Add some realistic thinking time
-                    time.sleep(DEFAULT_RESPONSE_DELAY)
+                # Initialize response variable
+                response = None
 
-                    # Get response using pre-loaded dataset
-                    response = get_response(model_choice, message_text, mental_health_dataset, st.session_state.user_name)
+                # Show processing message
+                if model_choice:
+                    with st.spinner(f"🤖 MindEase ({model_choice}) is crafting a thoughtful response..."):
+                        # Add some realistic thinking time
+                        time.sleep(DEFAULT_RESPONSE_DELAY)
+
+                        # Get response using pre-loaded dataset with comprehensive error handling
+                        try:
+                            response = get_response(model_choice, message_text, mental_health_dataset, st.session_state.user_name)
+                            
+                            # CRITICAL: Ensure response is never None or empty
+                            if not response or len(str(response).strip()) < MIN_RESPONSE_LENGTH:
+                                logger.error(f"Empty or invalid response from get_response for {model_choice}")
+                                response = guaranteed_response_generation(message_text, mental_health_dataset, st.session_state.user_name)
+                                
+                        except Exception as response_error:
+                            logger.error(f"Critical error in get_response for {model_choice}: {response_error}")
+                            # Use guaranteed response generation as ultimate fallback
+                            try:
+                                response = guaranteed_response_generation(message_text, mental_health_dataset, st.session_state.user_name)
+                            except Exception as guaranteed_error:
+                                logger.error(f"Even guaranteed response failed: {guaranteed_error}")
+                                response = DEFAULT_FALLBACK_RESPONSE
+                                
+                        # FINAL SAFETY CHECK: Ensure we ALWAYS have a valid response
+                        if not response or len(str(response).strip()) < MIN_RESPONSE_LENGTH:
+                            logger.error(f"CRITICAL: All response generation failed for {model_choice}! Using absolute fallback.")
+                            response = DEFAULT_FALLBACK_RESPONSE
                     
                     # ULTRA-CRITICAL: Multi-layer final validation to prevent any forbidden phrases
                     forbidden_final_phrases = [
@@ -2581,20 +2662,60 @@ def main_ui():
                     if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
                         logger.error(f"CRITICAL: Even guaranteed response failed! Using default response.")
                         response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
-            else:
-                response = "❌ No AI model is available. Please check your API keys configuration."
+                else:
+                    response = "❌ No AI model is available. Please check your API keys configuration."
 
-            # Add AI response with timestamp
-            response_timestamp = get_ist_timestamp()
-            model_display = model_choice if model_choice else "System"
-            st.session_state.messages.append(
-                ("ai-message", f"<strong>🤖 MindEase ({model_display}):</strong> {response}", response_timestamp))
+                # ULTIMATE SAFETY CHECK: Ensure we ALWAYS have some response
+                if not response:
+                    logger.error("CRITICAL: No response generated at all! Using emergency fallback.")
+                    response = DEFAULT_FALLBACK_RESPONSE
 
-            # Show success feedback
-            st.success("✨ Response generated! Continue the conversation below.")
+                # Add AI response with timestamp
+                response_timestamp = get_ist_timestamp()
+                model_display = model_choice if model_choice else "System"
+                st.session_state.messages.append(
+                    ("ai-message", f"<strong>🤖 MindEase ({model_display}):</strong> {response}", response_timestamp))
 
-            # Rerun to update the chat
-            st.rerun()
+                # Show success feedback
+                st.success("✨ Response generated! Continue the conversation below.")
+
+                # Rerun to update the chat
+                st.rerun()
+                
+        except Exception as send_message_error:
+            # CRITICAL ERROR HANDLING: If the entire send_message function fails
+            logger.error(f"CRITICAL: send_message function failed completely: {send_message_error}")
+            
+            # Ensure user message was added (if not already added)
+            try:
+                # Check if the user message was already added
+                if not st.session_state.messages or st.session_state.messages[-1][0] != "user-message":
+                    message_timestamp = get_ist_timestamp()
+                    st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(message_text)}", message_timestamp))
+            except Exception as msg_add_error:
+                logger.error(f"Failed to add user message: {msg_add_error}")
+            
+            # Add emergency response
+            try:
+                response_timestamp = get_ist_timestamp()
+                emergency_response = ("**I'M HERE FOR YOU!** 💙 I'm experiencing some technical difficulties right now, "
+                                    "but I want you to know that your feelings and thoughts are important. "
+                                    "Please try sending your message again, and I'll do my best to provide the support you need. "
+                                    "Remember, you're not alone in this journey.")
+                
+                st.session_state.messages.append(
+                    ("ai-message", f"<strong>🤖 MindEase (Emergency Support):</strong> {emergency_response}", response_timestamp))
+                
+                # Show error message to user
+                st.error("⚠️ I encountered a technical issue, but I'm still here to support you. Please try again.")
+                
+                # Rerun to update the chat
+                st.rerun()
+                
+            except Exception as emergency_error:
+                logger.error(f"Even emergency response failed: {emergency_error}")
+                # Last resort - show error message
+                st.error("❌ I'm experiencing technical difficulties. Please refresh the page and try again.")
     
     # Enhanced Sidebar
     with st.sidebar:
@@ -2824,8 +2945,26 @@ def main_ui():
                     st.session_state.processed_inputs.add(input_id)
                     st.session_state.last_input = current_input
                     st.session_state.input_counter += 1
-                    send_message(current_input, model_choice)
-                    st.rerun()
+                    
+                    # Enhanced error handling for send_message
+                    try:
+                        send_message(current_input, model_choice)
+                        st.rerun()
+                    except Exception as send_error:
+                        logger.error(f"Send message failed for button click: {send_error}")
+                        st.error("⚠️ I encountered an issue processing your message. Please try again.")
+                        # Ensure user message is still added even if processing fails
+                        try:
+                            message_timestamp = get_ist_timestamp()
+                            st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(current_input)}", message_timestamp))
+                            emergency_response = ("**I'M HERE FOR YOU!** 💙 I'm experiencing some technical difficulties, "
+                                                "but I want you to know that your message is important. Please try again.")
+                            response_timestamp = get_ist_timestamp()
+                            st.session_state.messages.append(
+                                ("ai-message", f"<strong>🤖 MindEase (Emergency):</strong> {emergency_response}", response_timestamp))
+                            st.rerun()
+                        except Exception as emergency_error:
+                            logger.error(f"Emergency response failed: {emergency_error}")
                 else:
                     st.info("⏳ Please wait a moment before sending the same message again...")
             else:
@@ -2838,8 +2977,26 @@ def main_ui():
             st.session_state.processed_inputs.add(input_id)
             st.session_state.last_input = current_input
             st.session_state.input_counter += 1
-            send_message(current_input, model_choice)
-            st.rerun()
+            
+            # Enhanced error handling for auto-send
+            try:
+                send_message(current_input, model_choice)
+                st.rerun()
+            except Exception as send_error:
+                logger.error(f"Send message failed for auto-send: {send_error}")
+                st.error("⚠️ I encountered an issue processing your message. Please try again.")
+                # Ensure user message is still added even if processing fails
+                try:
+                    message_timestamp = get_ist_timestamp()
+                    st.session_state.messages.append(("user-message", f"<strong>You:</strong> {html.escape(current_input)}", message_timestamp))
+                    emergency_response = ("**I'M HERE FOR YOU!** 💙 I'm experiencing some technical difficulties, "
+                                        "but I want you to know that your message is important. Please try again.")
+                    response_timestamp = get_ist_timestamp()
+                    st.session_state.messages.append(
+                        ("ai-message", f"<strong>🤖 MindEase (Emergency):</strong> {emergency_response}", response_timestamp))
+                    st.rerun()
+                except Exception as emergency_error:
+                    logger.error(f"Emergency response failed: {emergency_error}")
             
     except Exception as send_error:
         st.error(f"❌ Error sending message: {str(send_error)}")
