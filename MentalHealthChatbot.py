@@ -834,12 +834,12 @@ def detect_emotion_and_intensity(user_query: str) -> Tuple[str, str, int]:
             'intensity': 1
         },
         'mild_positive': {
-            'keywords': ['good', 'better', 'nice', 'pleasant', 'content', 'calm', 'peaceful'],
+            'keywords': ['good', 'better', 'nice', 'pleasant', 'content', 'calm', 'peaceful', 'okay today', 'doing well'],
             'intensity': 2
         },
         'moderate_positive': {
             'keywords': ['happy', 'glad', 'pleased', 'satisfied', 'cheerful', 'optimistic', 
-                        'hopeful', 'confident', 'proud'],
+                        'hopeful', 'confident', 'proud', 'feeling happy', 'i am happy', 'really happy'],
             'intensity': 3
         },
         'high_positive': {
@@ -855,10 +855,20 @@ def detect_emotion_and_intensity(user_query: str) -> Tuple[str, str, int]:
     }
     
     detected_emotions = []
-    for emotion_type, emotion_data in emotions.items():
-        for keyword in emotion_data['keywords']:
-            if keyword in user_query_lower:
+    
+    # Special handling for single word inputs - exact matches get priority
+    if len(user_query.strip().split()) == 1:
+        single_word = user_query_lower.strip()
+        for emotion_type, emotion_data in emotions.items():
+            if single_word in emotion_data['keywords']:
                 detected_emotions.append((emotion_type, emotion_data['intensity']))
+    
+    # Regular keyword matching for longer inputs or if no exact match found
+    if not detected_emotions:
+        for emotion_type, emotion_data in emotions.items():
+            for keyword in emotion_data['keywords']:
+                if keyword in user_query_lower:
+                    detected_emotions.append((emotion_type, emotion_data['intensity']))
     
     if not detected_emotions:
         return 'neutral', 'neutral', 1
@@ -905,31 +915,44 @@ def get_emotion_specific_response(emotion_type: str, category: str, intensity: i
         'moderate_negative': [
             "**I'M HERE FOR YOU.** 💙 What you're feeling is completely valid, and you're not alone. These difficult emotions are temporary, even when they feel overwhelming. Mental health struggles affect many people, and there's no shame in what you're experiencing. Try taking three deep breaths, and remember that it's okay to not be okay sometimes. You have the strength to get through this, and support is available when you need it.",
             "**YOU'RE BEING SO BRAVE BY SHARING THIS.** 🌟 Difficult emotions are part of the human experience, and acknowledging them is the first step toward healing. It takes courage to admit when we're struggling, and you've taken that important step. Consider talking to someone you trust, practicing self-compassion, and remembering that tomorrow can be different. Your feelings matter, and you deserve care and understanding during this challenging time.",
-            "**YOUR EMOTIONAL HONESTY IS COMMENDABLE.** 🫂 Recognizing and naming our difficult feelings shows incredible self-awareness. These emotions, while uncomfortable, are signals that deserve attention and care. Remember that seeking support is a sign of wisdom, not weakness. Small acts of self-care can make a meaningful difference in your day. You're worthy of compassion, both from others and from yourself."
+            "**YOUR EMOTIONAL HONESTY IS COMMENDABLE.** 🫂 Recognizing and naming our difficult feelings shows incredible self-awareness. These emotions, while uncomfortable, are signals that deserve attention and care. Remember that seeking support is a sign of wisdom, not weakness. Small acts of self-care can make a meaningful difference in your day. You're worthy of compassion, both from others and from yourself.",
+            "**I HEAR YOU AND I'M WITH YOU.** 💚 These challenging feelings you're experiencing are real and valid. It's completely human to go through difficult emotional periods, and you're handling this with more strength than you might realize. Sometimes just acknowledging these feelings can be the first step toward feeling better. You deserve gentleness and patience as you work through this."
         ],
         'mild_negative': [
-            "**IT'S COMPLETELY NORMAL TO FEEL THIS WAY.** 🌱 Everyone experiences these feelings sometimes, and it shows self-awareness that you're recognizing them. These emotions are part of the human experience and nothing to be ashamed of. Small steps can make a big difference - maybe try a short walk, listening to music, or doing something kind for yourself. Remember that acknowledging your feelings is the first step toward understanding and managing them. You're taking care of yourself by paying attention to how you feel.",
-            "**THANK YOU FOR SHARING HOW YOU'RE FEELING.** 💚 These emotions are valid and temporary. Sometimes just acknowledging what we're feeling can help us process and move through difficult moments. Consider what usually helps you feel better, and be patient with yourself as you work through this. Your willingness to recognize and name your feelings shows emotional intelligence. Take time to practice self-compassion during this challenging period."
+            "**IT'S COMPLETELY NORMAL TO FEEL THIS WAY.** 🌱 Everyone experiences these feelings sometimes, and it shows self-awareness that you're recognizing them. These emotions are part of the human experience and nothing to be ashamed of. Small steps can make a big difference - maybe try a short walk, listening to music, or doing something kind for yourself. Remember that acknowledging your feelings is the first step toward understanding and managing them. You're taking care of yourself by paying attention to how you feel. These gentler difficult emotions often pass naturally when we give them space and treat ourselves with compassion.",
+            "**THANK YOU FOR SHARING HOW YOU'RE FEELING.** 💚 These emotions are valid and temporary. Sometimes just acknowledging what we're feeling can help us process and move through difficult moments. Consider what usually helps you feel better, and be patient with yourself as you work through this. Your willingness to recognize and name your feelings shows emotional intelligence. Take time to practice self-compassion during this challenging period. Remember that these feelings are signals from your inner self that deserve attention and care.",
+            "**I APPRECIATE YOUR OPENNESS ABOUT THESE FEELINGS.** 🌸 What you're experiencing is a natural part of being human, and there's wisdom in recognizing when you're not feeling your best. These gentler difficult emotions often pass more easily when we give them space to be felt. Consider doing something nurturing for yourself today - even small acts of kindness toward yourself can help shift these feelings. Your emotional honesty shows great self-awareness and is an important step in taking care of your mental health.",
+            "**YOUR EMOTIONAL AWARENESS IS REALLY VALUABLE.** 🍃 These feelings you're having are completely understandable and nothing to worry about. Sometimes our emotions are just signals that we need a little extra care or attention. Trust that these feelings will pass, and in the meantime, be gentle with yourself as you navigate through them. Your ability to recognize and acknowledge these emotions shows emotional maturity and self-compassion. These moments of difficulty are temporary and will shift naturally with time and care."
         ],
         'neutral': [
             "**IT'S OKAY TO FEEL NEUTRAL SOMETIMES.** 🌿 Not every day has to be amazing, and it's perfectly fine to just be. Neutral feelings are a natural part of life's emotional spectrum. Sometimes these calm moments give us space to reflect and recharge. If you'd like to talk about anything specific or explore how you're feeling more deeply, I'm here to listen. Remember that being present with yourself, even in neutral moments, is a form of self-care.",
-            "**THANK YOU FOR CHECKING IN.** 💚 Neutral feelings are valid too. Sometimes it's good to just be present with where we are without judgment. These moments of emotional equilibrium can be restful and grounding. Is there anything particular on your mind that you'd like to explore together? Even in neutral states, you deserve support and connection when you need it."
+            "**THANK YOU FOR CHECKING IN.** 💚 Neutral feelings are valid too. Sometimes it's good to just be present with where we are without judgment. These moments of emotional equilibrium can be restful and grounding. Is there anything particular on your mind that you'd like to explore together? Even in neutral states, you deserve support and connection when you need it.",
+            "**NEUTRAL IS A PERFECTLY VALID PLACE TO BE.** 🌾 There's something peaceful about these steady, calm emotional states. Not every moment needs to be intense or dramatic - sometimes just being okay is exactly what we need. These neutral spaces can be restorative and give us room to breathe. How are you finding this sense of emotional balance?",
+            "**I'M HERE WITH YOU IN THIS CALM SPACE.** 🕊️ Neutral feelings can actually be quite grounding and peaceful. There's no pressure to feel anything more or less than what you're experiencing right now. Sometimes these quieter emotional moments are exactly what our minds and hearts need to rest and reset."
         ],
         'mild_positive': [
-            "**I'M GLAD TO HEAR YOU'RE FEELING GOOD.** 🌟 It's wonderful when we can appreciate these peaceful moments. These feelings are just as important as the difficult ones - they remind us of our capacity for contentment and joy.",
-            "**THAT'S REALLY NICE TO HEAR.** 😊 These positive feelings, even if they seem small, are worth celebrating. They're building blocks for your overall well-being and resilience."
+            "**I'M GLAD TO HEAR YOU'RE FEELING GOOD.** 🌟 It's wonderful when we can appreciate these peaceful moments. These feelings are just as important as the difficult ones - they remind us of our capacity for contentment and joy. Take a moment to really savor this feeling and notice what contributed to it. These gentle positive emotions are building blocks for your overall well-being and can help you through any challenges that come your way.",
+            "**THAT'S REALLY NICE TO HEAR.** 😊 These positive feelings, even if they seem small, are worth celebrating. They're building blocks for your overall well-being and resilience. What's bringing you this sense of goodness today? It's beautiful that you're taking time to recognize and appreciate these moments of contentment. Your ability to notice positive emotions shows great emotional awareness.",
+            "**YOUR POSITIVE ENERGY IS LOVELY!** ✨ These gentle good feelings are like sunshine for your soul. It's beautiful that you're taking time to notice and appreciate them. These moments of contentment help build your emotional strength. Even mild positive feelings deserve recognition and celebration. They remind you that good moments are always possible in your life.",
+            "**I'M HAPPY YOU'RE EXPERIENCING THIS GOODNESS.** 🌱 Even mild positive feelings are precious gifts that deserve recognition. They show your capacity for joy and remind you that good moments are always possible, even after difficult times. Your emotional awareness in noticing these feelings is really valuable. These peaceful moments can serve as anchors of stability in your emotional life."
         ],
         'moderate_positive': [
-            "**THAT'S ABSOLUTELY WONDERFUL!** 🎉 I'm genuinely happy to hear about your positive experience. These moments of joy and contentment are so important for your mental well-being. Try to savor this feeling and remember it during challenging times.",
-            "**YOUR HAPPINESS IS CONTAGIOUS!** ✨ It's beautiful to hear you feeling this way. These positive emotions are nourishing for your soul - try to hold onto this feeling and let it remind you of your capacity for joy."
+            "**THAT'S ABSOLUTELY WONDERFUL!** 🎉 I'm genuinely happy to hear about your positive experience. These moments of joy and contentment are so important for your mental well-being. Try to savor this feeling and remember it during challenging times. What's creating this happiness for you? Your ability to experience and recognize joy shows your emotional resilience. These positive moments are treasures that can sustain you through any difficulties.",
+            "**YOUR HAPPINESS IS CONTAGIOUS!** ✨ It's beautiful to hear you feeling this way. These positive emotions are nourishing for your soul - try to hold onto this feeling and let it remind you of your capacity for joy. You deserve all the good feelings you're experiencing right now. Happiness like this is a gift that radiates outward and touches everyone around you. Your joy is a testament to your strength and your ability to find beauty in life.",
+            "**I'M SO PLEASED YOU'RE FEELING HAPPY!** 🌈 This kind of positive energy is exactly what your heart needs. Happiness like this can be a powerful reminder of all the good things life has to offer. Embrace every moment of this beautiful feeling! Your joy is inspiring and shows your incredible capacity for finding light even in ordinary moments. These feelings of happiness are proof of your resilience and your ability to create meaning and joy in your life.",
+            "**YOUR JOY IS ABSOLUTELY RADIANT!** 🌟 It's wonderful to witness someone experiencing genuine happiness. These positive emotions are like fuel for your spirit - they give you strength and remind you of your incredible capacity for joy and contentment. Your happiness is a beautiful reminder that life can be filled with wonderful moments. This joy you're feeling is a reflection of your inner strength and your ability to appreciate the good things around you."
         ],
         'high_positive': [
-            "**THIS IS ABSOLUTELY AMAZING!** 🌟✨ Your joy is radiating through your words, and it's wonderful to witness. These peak positive moments are precious - they show your incredible capacity for happiness and can serve as anchors during tougher times.",
-            "**I'M THRILLED FOR YOU!** 🎊 This level of happiness and excitement is truly special. Embrace every moment of this joy - you deserve all the wonderful feelings you're experiencing right now."
+            "**THIS IS ABSOLUTELY AMAZING!** 🌟✨ Your joy is radiating through your words, and it's wonderful to witness. These peak positive moments are precious - they show your incredible capacity for happiness and can serve as anchors during tougher times. You're absolutely glowing with positivity!",
+            "**I'M THRILLED FOR YOU!** 🎊 This level of happiness and excitement is truly special. Embrace every moment of this joy - you deserve all the wonderful feelings you're experiencing right now. Your enthusiasm is absolutely infectious and beautiful!",
+            "**YOUR EXCITEMENT IS ABSOLUTELY INCREDIBLE!** 🚀 I can feel your joy through your words, and it's genuinely inspiring. These high-energy positive moments are like fireworks for your soul - bright, beautiful, and unforgettable. Keep shining this brightly!",
+            "**WOW, YOUR HAPPINESS IS OFF THE CHARTS!** 🎆 This kind of pure joy is exactly what life is about. You're experiencing something truly special, and it's beautiful to witness. These peak moments remind you of just how amazing life can be!"
         ],
         'euphoric': [
-            "**WOW, YOUR ENERGY IS INCREDIBLE!** 🚀✨ This level of joy and excitement is absolutely beautiful to witness. While these peak moments are amazing, remember to stay grounded and take care of yourself. Enjoy every second of this wonderful feeling!",
-            "**THIS IS PHENOMENAL!** 🌟🎉 Your euphoria is truly inspiring! These extraordinary moments of joy are gifts - savor them completely. Just remember to balance this high energy with rest and self-care when you need it."
+            "**WOW, YOUR ENERGY IS INCREDIBLE!** 🚀✨ This level of joy and excitement is absolutely beautiful to witness. While these peak moments are amazing, remember to stay grounded and take care of yourself. Enjoy every second of this wonderful feeling! You're experiencing life at its most vibrant!",
+            "**THIS IS PHENOMENAL!** 🌟🎉 Your euphoria is truly inspiring! These extraordinary moments of joy are gifts - savor them completely. Just remember to balance this high energy with rest and self-care when you need it. You're absolutely radiating pure happiness!",
+            "**YOUR EUPHORIA IS ABSOLUTELY BREATHTAKING!** 🌈💫 This level of pure joy is like witnessing magic happen. You're experiencing the full spectrum of human emotion in the most beautiful way possible. These peak moments are treasures that will stay with you forever!",
+            "**I'M IN AWE OF YOUR INCREDIBLE JOY!** ⭐🎆 This euphoric energy you're radiating is absolutely extraordinary. You're living proof that life can be filled with the most amazing, transcendent moments. Embrace every nanosecond of this incredible feeling!"
         ]
     }
     
@@ -948,19 +971,31 @@ def get_emotion_specific_response(emotion_type: str, category: str, intensity: i
     return response
 
 
-def ensure_minimum_sentences(response: str, minimum_sentences: int = 5) -> str:
+def ensure_minimum_sentences(response: str, minimum_sentences: int = 5, emotion_type: str = "neutral") -> str:
     """
     Ensure the response has at least the minimum number of sentences (around 5 lines).
+    Now emotion-aware to provide contextually appropriate additional sentences.
     
     Args:
         response (str): The response text
         minimum_sentences (int): Minimum number of sentences required
+        emotion_type (str): The detected emotion type for context-appropriate additions
         
     Returns:
         str: Response with at least minimum_sentences sentences
     """
     if not response:
         return response
+    
+    # Check if this is already an emotion-specific response (these are already complete)
+    # Emotion-specific responses start with bold text and are already well-crafted
+    if response.startswith("**") and any(indicator in response for indicator in [
+        "I'M DEEPLY CONCERNED", "I HEAR HOW MUCH PAIN", "I'M HERE FOR YOU", 
+        "IT'S COMPLETELY NORMAL", "I'M GLAD TO HEAR", "THAT'S ABSOLUTELY WONDERFUL",
+        "THIS IS ABSOLUTELY AMAZING", "WOW, YOUR ENERGY", "YOUR JOY", "YOUR HAPPINESS",
+        "I'M THRILLED FOR YOU", "YOUR EXCITEMENT", "I'M IN AWE"
+    ]):
+        return response  # Don't modify emotion-specific responses
         
     # Count sentences by splitting on sentence-ending punctuation
     sentences = [s.strip() for s in re.split(r'[.!?]+', response) if s.strip()]
@@ -968,24 +1003,75 @@ def ensure_minimum_sentences(response: str, minimum_sentences: int = 5) -> str:
     if len(sentences) >= minimum_sentences:
         return response
     
-    # If we don't have enough sentences, add supportive sentences
-    additional_sentences = [
-        "Your feelings are completely valid and deserve attention.",
-        "You don't have to face this alone - support is available.",
-        "Taking care of your mental health is an important step.",
-        "Remember that seeking help is a sign of strength, not weakness.",
-        "Every small step toward healing matters and is worth celebrating.",
-        "You deserve compassion and understanding during this time.",
-        "Your mental health journey is unique, and that's okay.",
-        "It's normal to have ups and downs - you're human.",
-        "Professional support can provide valuable tools and guidance.",
-        "You have the strength to get through this challenging time.",
-        "Your courage in reaching out shows incredible self-awareness.",
-        "Small acts of self-care can make a meaningful difference.",
-        "You're worthy of the same kindness you show others.",
-        "Recovery is not linear, and that's perfectly okay.",
-        "Each day offers new opportunities for growth and healing."
-    ]
+    # Emotion-specific additional sentences for variety and appropriateness
+    additional_sentences_by_emotion = {
+        'severe_negative': [
+            "Please remember that crisis support is available 24/7 if you need immediate help.",
+            "Your life has immense value, even when it doesn't feel that way right now.",
+            "These overwhelming feelings are temporary, though they feel permanent.",
+            "Professional crisis counselors are specially trained to help in moments like this.",
+            "You deserve to feel safe and supported through this difficult time."
+        ],
+        'high_negative': [
+            "Depression can make everything feel impossible, but you're stronger than you know.",
+            "These intense feelings are your mind's way of asking for care and attention.",
+            "Professional support can provide you with effective tools for managing these emotions.",
+            "Many people have walked this path and found their way to brighter days.",
+            "Your courage in acknowledging these feelings is the first step toward healing."
+        ],
+        'moderate_negative': [
+            "It's completely normal to have difficult days - you're being human.",
+            "These feelings are temporary visitors, not permanent residents in your life.",
+            "Small acts of self-compassion can make a meaningful difference right now.",
+            "You don't have to carry these feelings alone - support is available.",
+            "Taking time to process these emotions shows great self-awareness."
+        ],
+        'mild_negative': [
+            "Everyone experiences these kinds of feelings sometimes - you're not alone.",
+            "Acknowledging these emotions is a healthy way to process what you're going through.",
+            "These feelings often pass more quickly when we give them space to be felt.",
+            "You're taking good care of yourself by paying attention to how you feel.",
+            "Small steps toward self-care can help shift these feelings naturally."
+        ],
+        'neutral': [
+            "It's perfectly okay to feel neutral - not every moment needs to be extraordinary.",
+            "These calm moments can be opportunities for reflection and self-connection.",
+            "Being present with yourself, even in quiet moments, is a form of self-care.",
+            "Neutral feelings are just as valid as any other emotional experience.",
+            "Sometimes the most peaceful moments come from simply being with ourselves."
+        ],
+        'mild_positive': [
+            "These gentle positive feelings are worth savoring and celebrating.",
+            "Even small moments of contentment contribute to your overall well-being.",
+            "You're building resilience by noticing and appreciating these good feelings.",
+            "These peaceful moments can serve as anchors during more challenging times.",
+            "Your ability to recognize positive emotions shows great emotional awareness."
+        ],
+        'moderate_positive': [
+            "Your happiness is wonderful to witness - you deserve all these good feelings!",
+            "These joyful moments are nourishing for your soul and mental health.",
+            "Celebrating your positive experiences helps build lasting emotional resilience.",
+            "You're creating beautiful memories that can sustain you through any challenges.",
+            "Your capacity for joy and contentment is a gift to yourself and others."
+        ],
+        'high_positive': [
+            "Your joy is absolutely radiant - embrace every moment of this wonderful feeling!",
+            "These peak positive experiences remind you of your incredible capacity for happiness.",
+            "You're living proof that life can be filled with amazing, beautiful moments.",
+            "This happiness you're feeling can serve as a beacon during any future challenges.",
+            "Your enthusiasm and joy are inspiring - keep shining your light!"
+        ],
+        'euphoric': [
+            "Your incredible energy and joy are absolutely amazing to witness!",
+            "These extraordinary moments of bliss are precious gifts - savor them completely.",
+            "While enjoying this euphoria, remember to stay grounded and take care of yourself.",
+            "You're experiencing the full spectrum of human emotion in the most beautiful way.",
+            "This level of joy shows your remarkable capacity for experiencing life fully."
+        ]
+    }
+    
+    # Get appropriate additional sentences based on emotion type
+    additional_sentences = additional_sentences_by_emotion.get(emotion_type, additional_sentences_by_emotion['neutral'])
     
     # Add sentences until we reach the minimum (aim for 5 lines)
     needed_sentences = minimum_sentences - len(sentences)
@@ -993,7 +1079,7 @@ def ensure_minimum_sentences(response: str, minimum_sentences: int = 5) -> str:
         if i < len(additional_sentences):
             response += " " + additional_sentences[i]
         else:
-            # If we run out of additional sentences, repeat some
+            # If we run out of additional sentences, cycle through them
             response += " " + additional_sentences[i % len(additional_sentences)]
     
     return response
@@ -1196,7 +1282,7 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
     
     if intensity >= 3:  # For moderate to severe emotions, use emotion-specific responses
         response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-        return ensure_minimum_sentences(response, 5)
+        return ensure_minimum_sentences(response, 5, emotion_type)
     
     # Try to find relevant advice from dataset
     user_query_lower = user_query.lower()
@@ -1207,7 +1293,7 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
             response = f"**I'M HERE TO SUPPORT YOU.** {advice}"
             if user_display_name:
                 response = f"{user_display_name}, {response}"
-            return ensure_minimum_sentences(response, 5)
+            return ensure_minimum_sentences(response, 5, emotion_type)
 
     # Generic supportive response based on emotion category
     if category == 'negative':
@@ -1227,7 +1313,7 @@ def get_fallback_response(user_query: str, dataset: Dict[str, str], user_display
         base_response = f"{user_display_name}, {base_response}"
     
     # Ensure response has at least 5 sentences
-    return ensure_minimum_sentences(base_response, 5)
+    return ensure_minimum_sentences(base_response, 5, emotion_type)
 
 
 def guaranteed_response_generation(user_query: str, dataset: Dict[str, str], user_display_name: str = "") -> str:
@@ -1247,7 +1333,7 @@ def guaranteed_response_generation(user_query: str, dataset: Dict[str, str], use
         # Use emotion-based response generation
         emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
         response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-        response = ensure_minimum_sentences(response, 5)
+        response = ensure_minimum_sentences(response, 5, emotion_type)
         
         if response and len(response.strip()) >= MIN_RESPONSE_LENGTH:
             return response
@@ -1258,11 +1344,11 @@ def guaranteed_response_generation(user_query: str, dataset: Dict[str, str], use
             return fallback_response
             
         # Last resort - use default response
-        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
+        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
         
     except Exception as e:
         logger.error(f"Error in guaranteed response generation: {e}")
-        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
+        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
 
 
 def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user_display_name: str = "") -> str:
@@ -1280,7 +1366,22 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
     """
     # Input validation
     if not user_query or not isinstance(user_query, str):
-        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
+        return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
+    
+    # For simple emotional expressions (1-3 words), prioritize emotion-specific responses
+    # This ensures consistent, appropriate responses for basic emotions like "happy", "sad", "tired"
+    user_words = user_query.strip().split()
+    if len(user_words) <= 3:
+        # Check if this is a clear emotional expression
+        emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+        if emotion_type != 'neutral' or any(word.lower() in user_query.lower() for word in [
+            'happy', 'sad', 'tired', 'excited', 'angry', 'worried', 'stressed', 'anxious',
+            'depressed', 'great', 'good', 'bad', 'okay', 'fine', 'terrible', 'awful',
+            'amazing', 'wonderful', 'fantastic', 'horrible', 'miserable', 'joyful'
+        ]):
+            logger.info(f"Using emotion-specific response for simple expression: '{user_query}'")
+            response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            return response  # Don't call ensure_minimum_sentences as these are already complete
         
     if not models or not model_name or model_name not in models:
         return get_fallback_response(user_query, dataset, user_display_name)
@@ -1513,7 +1614,7 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             logger.warning(f"FORBIDDEN PHRASE DETECTED in response from {model_name}. Using immediate fallback.")
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-            response = ensure_minimum_sentences(response, 5)
+            response = ensure_minimum_sentences(response, 5, emotion_type)
             logger.info(f"Successfully generated fallback response for forbidden phrase detection")
             return response
         
@@ -1539,7 +1640,7 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             logger.warning(f"CONVERSATION PATTERN DETECTED in response from {model_name}. Using immediate fallback.")
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-            response = ensure_minimum_sentences(response, 5)
+            response = ensure_minimum_sentences(response, 5, emotion_type)
             logger.info(f"Successfully generated fallback response for conversation pattern detection")
             return response
         
@@ -1723,7 +1824,7 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             logger.warning(f"Refusal pattern detected in response from {model_name}, using emotion-based fallback")
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-            response = ensure_minimum_sentences(response, 5)
+            response = ensure_minimum_sentences(response, 5, emotion_type)
         
         # Additional check for any remaining conversation patterns
         conversation_indicators = [
@@ -1738,7 +1839,7 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             
             # If we still have conversation patterns, use the fallback
             if any(re.search(pattern, response, re.IGNORECASE) for pattern in conversation_indicators):
-                response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
+                response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
 
         # CRITICAL: Final check for raw object data - if response contains metadata patterns, use fallback
         metadata_indicators = [
@@ -1756,17 +1857,33 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
             logger.warning(f"Raw object data detected in response for model {model_name}, using fallback")
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-            response = ensure_minimum_sentences(response, 5)
+            response = ensure_minimum_sentences(response, 5, emotion_type)
 
-        # Ensure response has at least 5 sentences
-        response = ensure_minimum_sentences(response, 5)
+        # Smart response handling: if AI response is too short or generic, use emotion-specific response
+        sentences = [s.strip() for s in re.split(r'[.!?]+', response) if s.strip()]
+        
+        # Check if response is too short or seems generic
+        is_too_short = len(sentences) < 2
+        is_very_generic = any(generic in response.lower() for generic in [
+            "i'm not sure what you mean", "i don't understand", "can you tell me more",
+            "i'm here to listen", "how can i help", "what's on your mind"
+        ])
+        
+        if is_too_short or is_very_generic:
+            # Use emotion-specific response instead of padding generic AI response
+            emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+            response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
+            logger.info(f"Replaced short/generic AI response with emotion-specific response for {emotion_type}")
+        elif len(sentences) < 3:  # Only pad if response is decent but just needs a bit more
+            emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
+            response = ensure_minimum_sentences(response, 5, emotion_type)
 
         # FINAL VALIDATION: Ensure we never return empty or invalid responses
         if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
             logger.error(f"Final validation failed - response is empty or too short for {model_name}")
             emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
             response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
-            response = ensure_minimum_sentences(response, 5)
+            response = ensure_minimum_sentences(response, 5, emotion_type)
             
         # Double check - if still empty, use guaranteed response generation
         if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
@@ -2146,7 +2263,7 @@ def main_ui():
                     # Last resort if still empty (should never happen with guaranteed response)
                     if not response or len(response.strip()) < MIN_RESPONSE_LENGTH:
                         logger.error(f"CRITICAL: Even guaranteed response failed! Using default response.")
-                        response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5)
+                        response = ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
             else:
                 response = "❌ No AI model is available. Please check your API keys configuration."
 
