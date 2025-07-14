@@ -793,6 +793,287 @@ def clean_response_text(response: str) -> str:
     return response
 
 
+def detect_specific_issue(user_query: str) -> str:
+    """
+    Detect specific mental health issues or emotional concerns from user input.
+    
+    Args:
+        user_query (str): User's input message
+        
+    Returns:
+        str: Specific issue type or 'none' if no specific issue detected
+    """
+    user_query_lower = user_query.lower()
+    
+    # Define specific issue categories with their keywords
+    issue_categories = {
+        'sleep': [
+            'cant sleep', 'can\'t sleep', 'cannot sleep', 'insomnia', 'sleepless',
+            'cant fall asleep', 'can\'t fall asleep', 'cannot fall asleep',
+            'trouble sleeping', 'difficulty sleeping', 'sleep problems',
+            'restless night', 'tossing and turning', 'wide awake', 'sleepless night',
+            'cant get to sleep', 'can\'t get to sleep', 'cannot get to sleep',
+            'having trouble sleeping', 'struggling to sleep', 'sleep issues',
+            'no sleep', 'not sleeping', 'awake all night', 'up all night'
+        ],
+        'anxiety': [
+            'panic attack', 'panic attacks', 'having a panic attack', 'anxiety attack',
+            'feeling anxious', 'so anxious', 'very anxious', 'extremely anxious',
+            'cant breathe', 'can\'t breathe', 'cannot breathe', 'shortness of breath',
+            'heart racing', 'heart pounding', 'chest tight', 'chest tightness',
+            'feeling overwhelmed', 'overwhelmed by', 'too much to handle',
+            'racing thoughts', 'mind racing', 'cant stop worrying', 'can\'t stop worrying',
+            'social anxiety', 'afraid of people', 'scared of judgment'
+        ],
+        'depression': [
+            'feeling depressed', 'so depressed', 'very depressed', 'deeply depressed',
+            'no motivation', 'lost motivation', 'dont want to do anything', 'don\'t want to do anything',
+            'feel empty', 'feeling empty', 'feel numb', 'feeling numb',
+            'no energy', 'no point', 'whats the point', 'what\'s the point',
+            'feel worthless', 'feeling worthless', 'feel useless', 'feeling useless',
+            'hate myself', 'hate my life', 'life sucks', 'everything sucks',
+            'cant get out of bed', 'can\'t get out of bed', 'dont want to get up'
+        ],
+        'loneliness': [
+            'feel lonely', 'feeling lonely', 'so lonely', 'very lonely',
+            'feel alone', 'feeling alone', 'all alone', 'nobody cares',
+            'no friends', 'have no friends', 'no one to talk to',
+            'feel isolated', 'feeling isolated', 'feel disconnected',
+            'nobody understands', 'no one understands me', 'feel left out'
+        ],
+        'stress': [
+            'so stressed', 'very stressed', 'extremely stressed', 'stressed out',
+            'too much pressure', 'under pressure', 'cant handle', 'can\'t handle',
+            'too much work', 'work stress', 'school stress', 'exam stress',
+            'financial stress', 'money problems', 'cant cope', 'can\'t cope',
+            'breaking point', 'at my limit', 'too much going on'
+        ],
+        'anger': [
+            'so angry', 'very angry', 'extremely angry', 'furious', 'enraged',
+            'want to scream', 'want to hit something', 'so frustrated',
+            'cant control anger', 'can\'t control anger', 'anger issues',
+            'feel rage', 'feeling rage', 'boiling inside', 'seeing red'
+        ],
+        'grief': [
+            'someone died', 'lost someone', 'death in family', 'pet died',
+            'missing someone', 'grieving', 'feel grief', 'feeling grief',
+            'cant get over', 'can\'t get over', 'still hurting from',
+            'breakup', 'broke up', 'relationship ended', 'lost my job'
+        ],
+        'self_harm': [
+            'want to hurt myself', 'hurt myself', 'cutting', 'self harm',
+            'want to cut', 'thoughts of hurting', 'harming myself',
+            'self injury', 'want to die', 'suicidal thoughts', 'kill myself'
+        ],
+        'eating': [
+            'eating disorder', 'not eating', 'cant eat', 'can\'t eat',
+            'binge eating', 'overeating', 'food issues', 'body image',
+            'feel fat', 'hate my body', 'weight problems', 'diet obsessed'
+        ],
+        'relationships': [
+            'relationship problems', 'fighting with', 'argument with',
+            'family issues', 'parents dont understand', 'parents don\'t understand',
+            'toxic relationship', 'abusive relationship', 'trust issues',
+            'communication problems', 'feel unloved', 'feeling unloved'
+        ],
+        'work_school': [
+            'hate my job', 'work problems', 'boss problems', 'workplace stress',
+            'school problems', 'failing school', 'bad grades', 'academic pressure',
+            'bullying', 'being bullied', 'harassment', 'discrimination'
+        ],
+        'addiction': [
+            'drinking too much', 'alcohol problem', 'drug problem', 'addiction',
+            'cant stop drinking', 'can\'t stop drinking', 'substance abuse',
+            'gambling problem', 'internet addiction', 'phone addiction'
+        ],
+        'body_image': [
+            'hate my appearance', 'ugly', 'feel ugly', 'body dysmorphia',
+            'dont like how i look', 'don\'t like how i look', 'insecure about',
+            'feel unattractive', 'body shame', 'appearance anxiety'
+        ],
+        'trauma': [
+            'traumatic experience', 'ptsd', 'flashbacks', 'nightmares',
+            'cant forget', 'can\'t forget', 'haunted by', 'triggered by',
+            'abuse', 'was abused', 'sexual assault', 'violence'
+        ],
+        'achievement': [
+            'got promoted', 'new job', 'passed exam', 'graduated',
+            'accomplished', 'achieved', 'proud of myself', 'did well',
+            'success', 'successful', 'reached goal', 'dream came true'
+        ],
+        'love': [
+            'in love', 'found love', 'new relationship', 'getting married',
+            'engaged', 'anniversary', 'romantic', 'soulmate',
+            'perfect partner', 'love of my life', 'so happy together'
+        ],
+        'gratitude': [
+            'grateful', 'thankful', 'blessed', 'appreciate',
+            'lucky', 'fortunate', 'counting blessings', 'so thankful',
+            'grateful for', 'appreciate having', 'feel blessed'
+        ],
+        'excitement': [
+            'so excited', 'cant wait', 'can\'t wait', 'thrilled',
+            'looking forward', 'anticipating', 'pumped', 'stoked',
+            'over the moon', 'ecstatic', 'elated'
+        ],
+        'confidence': [
+            'feel confident', 'feeling confident', 'self confident',
+            'believe in myself', 'feel strong', 'feeling strong',
+            'empowered', 'feel capable', 'can do this', 'ready for anything'
+        ]
+    }
+    
+    # Check for specific issues (prioritize more serious ones first)
+    priority_order = ['self_harm', 'depression', 'anxiety', 'trauma', 'addiction', 
+                     'eating', 'sleep', 'grief', 'stress', 'anger', 'loneliness',
+                     'relationships', 'work_school', 'body_image', 'achievement',
+                     'love', 'gratitude', 'excitement', 'confidence']
+    
+    for issue_type in priority_order:
+        if issue_type in issue_categories:
+            for keyword in issue_categories[issue_type]:
+                if keyword in user_query_lower:
+                    return issue_type
+    
+    return 'none'
+
+
+def detect_sleep_issue(user_query: str) -> bool:
+    """
+    Detect if the user query is specifically about sleep problems.
+    (Kept for backward compatibility)
+    """
+    return detect_specific_issue(user_query) == 'sleep'
+
+
+def get_specific_issue_response(issue_type: str, user_display_name: str = "") -> str:
+    """
+    Generate a specific response based on the detected issue type.
+    
+    Args:
+        issue_type (str): Type of specific issue detected
+        user_display_name (str): Optional user name for personalization
+        
+    Returns:
+        str: Issue-specific supportive response
+    """
+    
+    responses = {
+        'sleep': [
+            "**I UNDERSTAND HOW FRUSTRATING SLEEP TROUBLES CAN BE.** 😴 Sleep difficulties are incredibly common and can really affect how you feel during the day. Try creating a calming bedtime routine: dim the lights an hour before bed, avoid screens, and practice deep breathing or gentle stretching. Your bedroom should be cool, dark, and quiet. If your mind is racing, try writing down your thoughts in a journal to help clear your head. Remember that even resting quietly in bed is beneficial for your body and mind.",
+            "**SLEEP STRUGGLES ARE SO EXHAUSTING AND VALID.** 🌙 When we can't sleep, it affects everything - our mood, energy, and ability to cope with daily stress. Try the 4-7-8 breathing technique: breathe in for 4 counts, hold for 7, exhale for 8. Avoid caffeine after 2 PM and create a consistent sleep schedule, even on weekends. If worries are keeping you awake, remind yourself that nighttime thoughts are often more intense than they really are. Your body knows how to sleep - sometimes we just need to create the right conditions and be patient with ourselves."
+        ],
+        
+        'anxiety': [
+            "**I'M HERE WITH YOU THROUGH THIS ANXIETY.** 🫂 What you're experiencing is real and valid - anxiety can feel overwhelming, but you're not alone. Try the 5-4-3-2-1 grounding technique: name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, 1 you taste. Focus on slow, deep breathing - in for 4 counts, hold for 4, out for 6. Remember that anxiety is temporary and will pass. You have the strength to get through this moment.",
+            "**YOUR ANXIETY IS VALID AND YOU'RE GOING TO BE OKAY.** 💙 Panic and anxiety can feel terrifying, but they cannot actually harm you. Try box breathing: breathe in for 4, hold for 4, out for 4, hold for 4. Ground yourself by pressing your feet firmly into the floor and naming things around you. Remind yourself: 'This is anxiety, it's temporary, and I am safe.' Consider reaching out to a mental health professional who can teach you more coping strategies."
+        ],
+        
+        'depression': [
+            "**I SEE YOUR PAIN AND YOU'RE NOT ALONE IN THIS DARKNESS.** 💙 Depression can make everything feel hopeless, but these feelings are not permanent. You're incredibly brave for reaching out. Start with tiny steps: drink water, take a shower, step outside for just one minute. Depression lies to us about our worth - you matter deeply. Please consider talking to a mental health professional who can provide proper support. There is hope, even when you can't see it right now.",
+            "**YOUR DEPRESSION IS REAL AND YOU DESERVE SUPPORT.** 🫂 When motivation disappears, it's not your fault - it's a symptom of depression. Be gentle with yourself and celebrate the smallest victories, like getting out of bed or eating a meal. Try to maintain basic routines even when everything feels pointless. Depression is treatable, and millions of people have found their way through this darkness. You deserve professional help and compassionate care."
+        ],
+        
+        'loneliness': [
+            "**YOU'RE NOT AS ALONE AS YOU FEEL RIGHT NOW.** 🤗 Loneliness can be incredibly painful, but reaching out here shows your strength. Consider joining online communities, volunteering, or taking a class where you might meet like-minded people. Sometimes even small interactions - with a cashier, neighbor, or online friend - can help. Remember that many people feel lonely sometimes; you're part of the human experience. Your feelings are valid, and connection is possible.",
+            "**I HEAR HOW ISOLATED YOU'RE FEELING.** 💚 Loneliness doesn't mean you're unlovable - it means you're human and need connection, which is natural. Try reaching out to one person today, even with a simple text. Consider joining support groups, hobby clubs, or volunteer organizations. Sometimes helping others can help us feel less alone. You have value and deserve meaningful connections."
+        ],
+        
+        'stress': [
+            "**I CAN FEEL HOW OVERWHELMED YOU ARE RIGHT NOW.** 😤 Stress can make everything feel impossible, but you're stronger than you know. Try breaking big problems into smaller, manageable steps. Practice the 'one thing at a time' approach - focus only on what you can control right now. Take breaks to breathe deeply, stretch, or step outside. Remember that it's okay to ask for help and to say no to additional commitments. You don't have to carry everything alone.",
+            "**YOUR STRESS IS COMPLETELY UNDERSTANDABLE.** 🌊 When life feels like too much, it's important to prioritize and be kind to yourself. Make a list of what's urgent vs. what can wait. Delegate what you can and let go of perfectionism. Try stress-relief techniques like progressive muscle relaxation, meditation, or physical exercise. Remember that stress is temporary, and you have survived difficult times before."
+        ],
+        
+        'anger': [
+            "**YOUR ANGER IS A VALID EMOTION THAT DESERVES ATTENTION.** 🔥 Anger often signals that something important to you has been threatened or violated. It's okay to feel angry - the key is expressing it in healthy ways. Try physical release like exercise, punching a pillow, or screaming in your car. Practice deep breathing and count to 10 before responding. Consider what's underneath the anger - hurt, fear, or frustration. You can learn to channel this powerful emotion constructively.",
+            "**I UNDERSTAND YOU'RE FEELING INTENSE ANGER RIGHT NOW.** ⚡ Anger can feel overwhelming, but it's a normal human emotion. Try the STOP technique: Stop what you're doing, Take a breath, Observe your feelings, Proceed mindfully. Physical activity can help release angry energy safely. Remember that anger is often a secondary emotion protecting deeper feelings. You have the power to choose how you respond to these intense feelings."
+        ],
+        
+        'grief': [
+            "**I'M SO SORRY FOR YOUR LOSS.** 💔 Grief is one of the most difficult human experiences, and there's no 'right' way to grieve. Your pain is a reflection of how much you cared. Allow yourself to feel whatever comes up - sadness, anger, numbness, or even moments of peace. Grief comes in waves, and that's normal. Take care of your basic needs and lean on others for support. Healing doesn't mean forgetting - it means learning to carry love alongside the pain.",
+            "**YOUR GRIEF IS A TESTAMENT TO YOUR LOVE.** 🕊️ Loss changes us forever, but it doesn't have to break us. Be patient with yourself as you navigate this difficult journey. There's no timeline for grief - some days will be harder than others. Consider joining a grief support group or talking to a counselor who specializes in loss. Honor your loved one's memory while also taking care of yourself. You deserve support during this incredibly difficult time."
+        ],
+        
+        'self_harm': [
+            "**I'M DEEPLY CONCERNED ABOUT YOU AND YOU MATTER SO MUCH.** 🆘 These thoughts and urges are a sign that you're in serious emotional pain, and you deserve immediate professional help. Please reach out to a crisis hotline, go to an emergency room, or call 988 (Suicide & Crisis Lifeline) right now. You are not alone, and there are people trained to help you through this crisis. Your life has immense value, even when it doesn't feel that way. Please stay safe and get help immediately.",
+            "**PLEASE KNOW THAT YOU'RE WORTH SAVING.** 💙 Self-harm thoughts are a sign of intense emotional pain, not weakness. You need and deserve professional crisis support right now. Call 988, text HOME to 741741, or go to your nearest emergency room. These feelings are temporary, but the consequences of self-harm can be permanent. There are healthier ways to cope with this pain, and trained professionals can help you find them. Please reach out for help immediately."
+        ],
+        
+        'eating': [
+            "**YOUR RELATIONSHIP WITH FOOD AND YOUR BODY DESERVES COMPASSION.** 🌸 Eating disorders and body image struggles are serious but treatable conditions. You're not alone in this battle, and recovery is possible. Consider reaching out to an eating disorder specialist or calling the National Eating Disorders Association helpline. Your worth is not determined by your weight, appearance, or what you eat. You deserve nourishment, both physical and emotional. Please be gentle with yourself as you work toward healing.",
+            "**I HEAR HOW DIFFICULT YOUR RELATIONSHIP WITH FOOD HAS BECOME.** 💚 Eating disorders are complex mental health conditions that require professional support. You deserve to have a peaceful relationship with food and your body. Try to focus on nourishing yourself rather than restricting or punishing. Consider working with a therapist who specializes in eating disorders and body image. Recovery is a journey, and you don't have to walk it alone."
+        ],
+        
+        'relationships': [
+            "**RELATIONSHIP STRUGGLES CAN BE INCREDIBLY PAINFUL.** 💕 Healthy relationships require work, communication, and mutual respect. It's normal to have conflicts, but both people should feel heard and valued. Consider couples counseling if you're both willing to work on things. If you're in an abusive situation, please reach out to the National Domestic Violence Hotline (1-800-799-7233). You deserve to be treated with kindness and respect in all your relationships.",
+            "**I UNDERSTAND HOW CHALLENGING RELATIONSHIPS CAN BE.** 🤝 Communication is often the key to resolving conflicts. Try using 'I' statements to express your feelings without blaming. Listen actively and try to understand the other person's perspective. Sometimes relationships need professional guidance to heal. Remember that you can only control your own actions and responses, not others'. You deserve healthy, supportive relationships."
+        ],
+        
+        'work_school': [
+            "**WORK AND SCHOOL STRESS CAN FEEL OVERWHELMING.** 📚 Academic and workplace pressures are real challenges that many people face. Try breaking large tasks into smaller, manageable steps. Create a schedule that includes breaks and self-care time. Don't hesitate to ask for help from teachers, supervisors, or counselors. Remember that your worth isn't determined by your grades or job performance. If you're being bullied or harassed, please report it to appropriate authorities. You deserve a safe, supportive environment.",
+            "**I HEAR HOW DIFFICULT YOUR WORK/SCHOOL SITUATION HAS BECOME.** 💼 Performance pressure can create significant stress and anxiety. Focus on doing your best rather than being perfect. Utilize available resources like tutoring, employee assistance programs, or academic counseling. If the environment is toxic or abusive, consider speaking with HR, administration, or seeking external support. Your mental health is more important than any grade or job."
+        ],
+        
+        'addiction': [
+            "**RECOGNIZING AN ADDICTION PROBLEM TAKES INCREDIBLE COURAGE.** 🌟 Addiction is a medical condition, not a moral failing, and recovery is possible with the right support. Consider reaching out to a substance abuse counselor, calling SAMHSA's helpline (1-800-662-4357), or attending a support group like AA or NA. Recovery is a journey, and relapses don't mean failure. You deserve compassion, professional help, and a life free from the control of substances. Take it one day at a time.",
+            "**YOUR STRUGGLE WITH ADDICTION IS REAL AND YOU DESERVE HELP.** 💪 Addiction affects the brain in powerful ways, making it incredibly difficult to stop without support. You're not weak for struggling with this - you're human. Professional treatment, support groups, and therapy can provide you with tools for recovery. Consider telling a trusted friend or family member about your struggle. Recovery is possible, and you don't have to face this alone."
+        ],
+        
+        'body_image': [
+            "**YOUR WORTH IS NOT DETERMINED BY YOUR APPEARANCE.** ✨ Body image struggles are incredibly common in our appearance-focused society. Try practicing body neutrality - focusing on what your body can do rather than how it looks. Limit social media if it triggers comparison. Surround yourself with people who value you for who you are, not how you look. Consider working with a therapist who specializes in body image. You are so much more than your physical appearance.",
+            "**I UNDERSTAND HOW PAINFUL BODY IMAGE STRUGGLES CAN BE.** 🌺 Society's beauty standards are unrealistic and harmful. Your body deserves respect and care regardless of its size or shape. Try speaking to yourself with the same kindness you'd show a good friend. Focus on health and how you feel rather than appearance. If these thoughts are severely impacting your life, please consider professional support. You are worthy of love and acceptance exactly as you are."
+        ],
+        
+        'trauma': [
+            "**I'M SO SORRY YOU EXPERIENCED TRAUMA.** 🛡️ What happened to you was not your fault, and your reactions are normal responses to abnormal situations. Trauma can have lasting effects, but healing is possible with proper support. Consider working with a trauma-specialized therapist who can help you process these experiences safely. PTSD and trauma responses are treatable conditions. You survived something difficult, which shows your incredible strength. You deserve peace and healing.",
+            "**YOUR TRAUMA RESPONSES ARE VALID AND UNDERSTANDABLE.** 💙 Trauma can affect us in many ways - flashbacks, nightmares, anxiety, and emotional numbness are all normal reactions. You're not broken or damaged. Consider trauma-focused therapies like EMDR or cognitive processing therapy. Support groups can also help you feel less alone. Healing takes time, and it's okay to go at your own pace. You deserve professional support and compassion as you work toward recovery."
+        ],
+        
+        'achievement': [
+            "**CONGRATULATIONS ON YOUR AMAZING ACHIEVEMENT!** 🎉 Your hard work and dedication have paid off, and you should feel incredibly proud of yourself. Take time to really savor this moment and celebrate what you've accomplished. Your success is a testament to your abilities and perseverance. Share this joy with people who care about you - you deserve to be celebrated! This achievement shows what you're capable of, and it's just the beginning of many great things to come.",
+            "**I'M SO PROUD OF WHAT YOU'VE ACCOMPLISHED!** ⭐ Success like this doesn't happen by accident - it's the result of your effort, determination, and talent. You've proven to yourself that you can achieve your goals when you set your mind to it. Take a moment to reflect on the journey that brought you here and all the obstacles you overcame. This achievement will serve as a reminder of your capabilities during future challenges. You absolutely deserve this success!"
+        ],
+        
+        'love': [
+            "**LOVE IS ONE OF LIFE'S MOST BEAUTIFUL EXPERIENCES!** 💕 I'm so happy to hear that you've found someone special who brings joy to your life. Healthy love should make you feel supported, valued, and free to be yourself. Cherish these wonderful feelings and the connection you've found. Remember that good relationships are built on mutual respect, communication, and shared growth. Enjoy this beautiful chapter of your life - you deserve all the happiness that love can bring!",
+            "**YOUR HAPPINESS IN LOVE IS ABSOLUTELY WONDERFUL!** 💖 Finding someone who truly understands and cares for you is a precious gift. Love has the power to heal, inspire, and bring out the best in us. Take time to appreciate not just the big romantic moments, but also the small daily acts of care and kindness. Healthy love should enhance your life while still allowing you to maintain your individual identity. I'm so glad you're experiencing this joy!"
+        ],
+        
+        'gratitude': [
+            "**YOUR GRATITUDE IS BEAUTIFUL AND POWERFUL.** 🙏 Taking time to appreciate the good things in your life is one of the most effective ways to boost happiness and resilience. Gratitude helps us focus on abundance rather than scarcity, and it strengthens our connections with others. Your thankful heart is a gift not just to yourself, but to everyone around you. Keep nurturing this positive perspective - it will serve you well through both good times and challenges.",
+            "**I LOVE HEARING ABOUT YOUR GRATEFUL HEART.** ✨ Gratitude is like a magnet for more positive experiences and deeper contentment. The fact that you're taking time to notice and appreciate the good things shows wisdom and emotional maturity. This mindset will help you weather life's storms and find joy in everyday moments. Your appreciation for life's blessings is inspiring and reminds us all to pause and be thankful."
+        ],
+        
+        'excitement': [
+            "**YOUR EXCITEMENT IS ABSOLUTELY CONTAGIOUS!** 🎊 I can feel your positive energy through your words, and it's wonderful! Anticipation and excitement are such joyful emotions that remind us of life's potential for amazing experiences. Whatever you're looking forward to, I hope it exceeds all your expectations. Your enthusiasm is a gift - it lights you up from the inside and spreads to everyone around you. Enjoy every moment of this thrilling anticipation!",
+            "**I'M SO EXCITED FOR YOU!** 🌟 Your enthusiasm and anticipation are beautiful to witness. These moments of pure excitement remind us why life is worth living - for the experiences that make our hearts race with joy. Whatever adventure or opportunity awaits you, you're approaching it with the perfect mindset. Your excitement shows that you're fully engaged with life and open to its possibilities. That's truly inspiring!"
+        ],
+        
+        'confidence': [
+            "**YOUR CONFIDENCE IS ABSOLUTELY RADIANT!** 💪 Believing in yourself is one of the most powerful forces in the world, and you're clearly tapping into that strength. Confidence isn't about being perfect - it's about trusting in your ability to handle whatever comes your way. Your self-assurance will open doors and create opportunities that might not have existed otherwise. Keep nurturing this belief in yourself - you have every reason to feel confident about who you are and what you can achieve!",
+            "**I LOVE SEEING YOU EMBRACE YOUR POWER!** ⚡ True confidence comes from knowing your worth and trusting your abilities, and you're clearly in that beautiful space right now. This inner strength will serve you well in all areas of life. Remember that confidence is not about never feeling doubt - it's about moving forward despite uncertainty. Your belief in yourself is inspiring and will undoubtedly lead to amazing things!"
+        ]
+    }
+    
+    if issue_type not in responses:
+        return ""
+    
+    response = random.choice(responses[issue_type])
+    
+    if user_display_name:
+        response = f"{user_display_name}, {response}"
+    
+    return response
+
+
+def get_sleep_specific_response(user_display_name: str = "") -> str:
+    """
+    Generate a specific response for sleep-related issues.
+    (Kept for backward compatibility)
+    """
+    return get_specific_issue_response('sleep', user_display_name)
+
+
 def detect_emotion_and_intensity(user_query: str) -> Tuple[str, str, int]:
     """
     Detect emotion type, category, and intensity from user input.
@@ -821,7 +1102,11 @@ def detect_emotion_and_intensity(user_query: str) -> Tuple[str, str, int]:
         },
         'moderate_negative': {
             'keywords': ['sad', 'anxious', 'worried', 'stressed', 'upset', 'frustrated', 
-                        'angry', 'lonely', 'scared', 'nervous', 'tired', 'exhausted'],
+                        'angry', 'lonely', 'scared', 'nervous', 'tired', 'exhausted',
+                        'cant sleep', 'can\'t sleep', 'cannot sleep', 'insomnia', 'sleepless',
+                        'cant fall asleep', 'can\'t fall asleep', 'cannot fall asleep',
+                        'trouble sleeping', 'difficulty sleeping', 'sleep problems',
+                        'restless night', 'tossing and turning', 'wide awake', 'sleepless night'],
             'intensity': 3
         },
         'mild_negative': {
@@ -916,7 +1201,9 @@ def get_emotion_specific_response(emotion_type: str, category: str, intensity: i
             "**I'M HERE FOR YOU.** 💙 What you're feeling is completely valid, and you're not alone. These difficult emotions are temporary, even when they feel overwhelming. Mental health struggles affect many people, and there's no shame in what you're experiencing. Try taking three deep breaths, and remember that it's okay to not be okay sometimes. You have the strength to get through this, and support is available when you need it.",
             "**YOU'RE BEING SO BRAVE BY SHARING THIS.** 🌟 Difficult emotions are part of the human experience, and acknowledging them is the first step toward healing. It takes courage to admit when we're struggling, and you've taken that important step. Consider talking to someone you trust, practicing self-compassion, and remembering that tomorrow can be different. Your feelings matter, and you deserve care and understanding during this challenging time.",
             "**YOUR EMOTIONAL HONESTY IS COMMENDABLE.** 🫂 Recognizing and naming our difficult feelings shows incredible self-awareness. These emotions, while uncomfortable, are signals that deserve attention and care. Remember that seeking support is a sign of wisdom, not weakness. Small acts of self-care can make a meaningful difference in your day. You're worthy of compassion, both from others and from yourself.",
-            "**I HEAR YOU AND I'M WITH YOU.** 💚 These challenging feelings you're experiencing are real and valid. It's completely human to go through difficult emotional periods, and you're handling this with more strength than you might realize. Sometimes just acknowledging these feelings can be the first step toward feeling better. You deserve gentleness and patience as you work through this."
+            "**I HEAR YOU AND I'M WITH YOU.** 💚 These challenging feelings you're experiencing are real and valid. It's completely human to go through difficult emotional periods, and you're handling this with more strength than you might realize. Sometimes just acknowledging these feelings can be the first step toward feeling better. You deserve gentleness and patience as you work through this.",
+            "**I UNDERSTAND HOW FRUSTRATING SLEEP TROUBLES CAN BE.** 😴 Sleep difficulties are incredibly common and can really affect how you feel during the day. Try creating a calming bedtime routine: dim the lights an hour before bed, avoid screens, and practice deep breathing or gentle stretching. Your bedroom should be cool, dark, and quiet. If your mind is racing, try writing down your thoughts in a journal to help clear your head. Remember that even resting quietly in bed is beneficial for your body and mind.",
+            "**SLEEP STRUGGLES ARE SO EXHAUSTING AND VALID.** 🌙 When we can't sleep, it affects everything - our mood, energy, and ability to cope with daily stress. Try the 4-7-8 breathing technique: breathe in for 4 counts, hold for 7, exhale for 8. Avoid caffeine after 2 PM and create a consistent sleep schedule, even on weekends. If worries are keeping you awake, remind yourself that nighttime thoughts are often more intense than they really are. Your body knows how to sleep - sometimes we just need to create the right conditions and be patient with ourselves."
         ],
         'mild_negative': [
             "**IT'S COMPLETELY NORMAL TO FEEL THIS WAY.** 🌱 Everyone experiences these feelings sometimes, and it shows self-awareness that you're recognizing them. These emotions are part of the human experience and nothing to be ashamed of. Small steps can make a big difference - maybe try a short walk, listening to music, or doing something kind for yourself. Remember that acknowledging your feelings is the first step toward understanding and managing them. You're taking care of yourself by paying attention to how you feel. These gentler difficult emotions often pass naturally when we give them space and treat ourselves with compassion.",
@@ -1330,6 +1617,12 @@ def guaranteed_response_generation(user_query: str, dataset: Dict[str, str], use
         str: Guaranteed response (never empty)
     """
     try:
+        # Check for specific issues first (high priority)
+        specific_issue = detect_specific_issue(user_query)
+        if specific_issue != 'none':
+            logger.info(f"Detected specific issue '{specific_issue}' in guaranteed response for: '{user_query}'")
+            return get_specific_issue_response(specific_issue, user_display_name)
+        
         # Use emotion-based response generation
         emotion_type, category, intensity = detect_emotion_and_intensity(user_query)
         response = get_emotion_specific_response(emotion_type, category, intensity, user_display_name)
@@ -1367,6 +1660,12 @@ def get_response(model_name: str, user_query: str, dataset: Dict[str, str], user
     # Input validation
     if not user_query or not isinstance(user_query, str):
         return ensure_minimum_sentences(DEFAULT_FALLBACK_RESPONSE, 5, "neutral")
+    
+    # Check for specific issues first (high priority)
+    specific_issue = detect_specific_issue(user_query)
+    if specific_issue != 'none':
+        logger.info(f"Detected specific issue '{specific_issue}' in query: '{user_query}'")
+        return get_specific_issue_response(specific_issue, user_display_name)
     
     # For simple emotional expressions (1-3 words), prioritize emotion-specific responses
     # This ensures consistent, appropriate responses for basic emotions like "happy", "sad", "tired"
@@ -2152,6 +2451,8 @@ def initialize_session_state():
             st.session_state.input_key = 0
         if "last_input" not in st.session_state:
             st.session_state.last_input = ""
+        if "message_sent" not in st.session_state:
+            st.session_state.message_sent = False
     except Exception as session_error:
         logger.error(f"Session state initialization error: {session_error}")
 
@@ -2407,6 +2708,11 @@ def main_ui():
             placeholder="Type your message here... Press Enter or click Send",
             help="Express yourself freely - I'm here to listen and support you"
         )
+        
+        # Update session state with current input value
+        if user_input != st.session_state.user_input:
+            st.session_state.user_input = user_input
+            
     except Exception as input_error:
         st.error(f"❌ Error with input field: {str(input_error)}")
         user_input = ""
@@ -2443,24 +2749,26 @@ def main_ui():
 
     # Handle Message Send (Button click or Enter key)
     try:
-        # Send message if button clicked OR if there's new input that's different from last input
-        should_send = (
-            send_btn or 
-            (user_input and 
-             user_input.strip() and 
-             user_input.strip() != st.session_state.get('last_input', '').strip())
-        )
+        # Get the current input value
+        current_input = user_input.strip() if user_input else ""
         
-        if should_send:
-            if user_input and user_input.strip():
+        # Check if send button was clicked
+        if send_btn:
+            if current_input:
                 # Update last input to prevent duplicate processing
-                st.session_state.last_input = user_input.strip()
-                send_message(user_input.strip(), model_choice)
+                st.session_state.last_input = current_input
+                send_message(current_input, model_choice)
+                st.rerun()
             else:
                 st.warning("⚠️ Please enter a message before sending.")
-        elif user_input and not user_input.strip():
-            # Handle empty input
-            st.session_state.user_input = ""
+        
+        # Auto-send logic for Enter key (only if input is different from last processed)
+        elif current_input and current_input != st.session_state.get('last_input', ''):
+            # Update last input to prevent duplicate processing
+            st.session_state.last_input = current_input
+            send_message(current_input, model_choice)
+            st.rerun()
+            
     except Exception as send_error:
         st.error(f"❌ Error sending message: {str(send_error)}")
         logger.error(f"Send message error: {send_error}")
