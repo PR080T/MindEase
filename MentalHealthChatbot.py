@@ -2514,6 +2514,20 @@ def initialize_session_state():
             st.session_state.processed_inputs = set()
         if "input_counter" not in st.session_state:
             st.session_state.input_counter = 0
+        
+        # Additional session state variables for robust input handling
+        if "has_pending_input" not in st.session_state:
+            st.session_state.has_pending_input = False
+        if "user_clicked_send" not in st.session_state:
+            st.session_state.user_clicked_send = False
+        if "backup_user_input" not in st.session_state:
+            st.session_state.backup_user_input = ""
+        if "last_detected_input" not in st.session_state:
+            st.session_state.last_detected_input = ""
+        if "pending_input_time" not in st.session_state:
+            st.session_state.pending_input_time = 0
+        if "send_click_time" not in st.session_state:
+            st.session_state.send_click_time = 0
     except Exception as session_error:
         logger.error(f"Session state initialization error: {session_error}")
 
@@ -2523,6 +2537,62 @@ if is_streamlit_context():
 
 def main_ui():
     """Main UI function that contains all Streamlit UI code."""
+    
+    # Ensure session state is initialized before any UI operations
+    try:
+        initialize_session_state()
+    except Exception as e:
+        logger.error(f"Error initializing session state in main_ui: {e}")
+        # Fallback initialization
+        if "input_key" not in st.session_state:
+            st.session_state.input_key = 0
+        if "user_input" not in st.session_state:
+            st.session_state.user_input = ""
+        if "has_pending_input" not in st.session_state:
+            st.session_state.has_pending_input = False
+        if "user_clicked_send" not in st.session_state:
+            st.session_state.user_clicked_send = False
+    
+    # CRITICAL: Pre-initialize ALL possible dynamic keys to prevent access errors
+    def ensure_all_dynamic_keys_initialized():
+        """Ensure all possible dynamic input keys are initialized"""
+        try:
+            # Initialize current key
+            current_input_key = st.session_state.get('input_key', 0)
+            current_key = f"user_input_{current_input_key}"
+            if current_key not in st.session_state:
+                st.session_state[current_key] = ""
+                logger.debug(f"Pre-initialized current dynamic key: {current_key}")
+            
+            # Initialize previous key (in case of timing issues)
+            if current_input_key > 0:
+                prev_key = f"user_input_{current_input_key - 1}"
+                if prev_key not in st.session_state:
+                    st.session_state[prev_key] = ""
+                    logger.debug(f"Pre-initialized previous dynamic key: {prev_key}")
+            
+            # Initialize next key (in case of increment)
+            next_key = f"user_input_{current_input_key + 1}"
+            if next_key not in st.session_state:
+                st.session_state[next_key] = ""
+                logger.debug(f"Pre-initialized next dynamic key: {next_key}")
+                
+        except Exception as e:
+            logger.error(f"Error pre-initializing dynamic keys: {e}")
+    
+    ensure_all_dynamic_keys_initialized()
+    
+    # SAFE SESSION STATE ACCESS - Wrapper to prevent KeyError
+    def safe_session_get(key, default=""):
+        """Safely get a value from session state, initializing if needed"""
+        try:
+            if key not in st.session_state:
+                st.session_state[key] = default
+                logger.debug(f"Auto-initialized session state key: {key}")
+            return st.session_state.get(key, default)
+        except Exception as e:
+            logger.error(f"Error accessing session state key {key}: {e}")
+            return default
     
     # BULLETPROOF PROTECTION - Prevent ANY warning messages from appearing
     # This intercepts and overrides any validation warnings that might slip through
@@ -2585,12 +2655,22 @@ def main_ui():
             
             # Force clear the widget value by removing the previous key from session state
             # This ensures the input field is completely cleared
-            prev_key = f"user_input_{st.session_state.input_key - 1}"
-            if prev_key in st.session_state:
-                try:
-                    del st.session_state[prev_key]
-                except Exception as e:
-                    logger.warning(f"Could not clear previous key {prev_key}: {e}")
+            try:
+                prev_key = f"user_input_{st.session_state.input_key - 1}"
+                if prev_key in st.session_state:
+                    try:
+                        del st.session_state[prev_key]
+                    except Exception as e:
+                        logger.warning(f"Could not clear previous key {prev_key}: {e}")
+            except Exception as e:
+                logger.warning(f"Error generating previous key: {e}")
+            
+            # Pre-initialize the new key to prevent issues
+            try:
+                new_key = f"user_input_{st.session_state.input_key}"
+                st.session_state[new_key] = ""
+            except Exception as e:
+                logger.warning(f"Error pre-initializing new key: {e}")
                 
             # Clear other tracking flags
             st.session_state.has_pending_input = False
@@ -3041,37 +3121,43 @@ def main_ui():
     # Enhanced Input Section
     # User Input Field with improved session state management
     try:
+        # Ensure input_key is properly initialized
+        if "input_key" not in st.session_state:
+            st.session_state.input_key = 0
+        
         # Create a unique key for the input field to force refresh when cleared
         input_key = f"user_input_{st.session_state.input_key}"
+        
+        # Pre-initialize the dynamic key to prevent "key not found" errors
+        if input_key not in st.session_state:
+            st.session_state[input_key] = ""
         
         # Ensure the value is always taken from session state
         # This prevents the input field from retaining old values
         input_value = st.session_state.get("user_input", "")
         
-        # Define a robust on_change callback
-        def on_input_change():
-            """Callback to ensure input is always captured when it changes."""
-            try:
-                current_widget_value = st.session_state.get(input_key, "")
-                if current_widget_value:
-                    st.session_state.user_input = current_widget_value
-                    st.session_state.backup_user_input = current_widget_value.strip()
-                    st.session_state.last_detected_input = current_widget_value.strip()
-                    st.session_state.has_pending_input = True
-                    st.session_state.pending_input_time = time.time()
-                    logger.debug(f"Input change captured: '{current_widget_value.strip()}'")
-            except Exception as e:
-                logger.error(f"Input change callback error: {e}")
-        
+        # Create the text input WITHOUT on_change callback to prevent session state access issues
         user_input = st.text_input(
             "💬 Share your thoughts and feelings...",
             value=input_value,  # Use the value from session state
             key=input_key,      # Use dynamic key to force refresh
             placeholder="Type your message here... Press Enter or click Send",
-            help="Express yourself freely - I'm here to listen and support you",
-            # Set on_change parameter to ensure input is updated in session state
-            on_change=on_input_change  # Robust input change handling
+            help="Express yourself freely - I'm here to listen and support you"
+            # Removed on_change to prevent session state key access errors
         )
+        
+        # Manual input change detection (replaces the on_change callback)
+        try:
+            current_widget_value = safe_session_get(input_key, "")
+            if current_widget_value and current_widget_value != safe_session_get("user_input", ""):
+                st.session_state.user_input = current_widget_value
+                st.session_state.backup_user_input = current_widget_value.strip()
+                st.session_state.last_detected_input = current_widget_value.strip()
+                st.session_state.has_pending_input = True
+                st.session_state.pending_input_time = time.time()
+                logger.debug(f"Manual input change detected: '{current_widget_value.strip()}'")
+        except Exception as e:
+            logger.error(f"Manual input change detection error: {e}")
         
         # Update session state with current input value - ensure synchronization
         # More robust synchronization to prevent state issues
@@ -3083,16 +3169,25 @@ def main_ui():
         logger.debug(f"Input field state - key: {input_key}, value: '{input_value}', current: '{user_input}', session_state.user_input: '{st.session_state.get('user_input', '')}'")
         
         # Additional safety check: if widget has value but session state doesn't, sync them
-        widget_value = st.session_state.get(input_key, "")
-        if widget_value and not st.session_state.get("user_input", ""):
-            st.session_state.user_input = widget_value
-            logger.debug(f"Synced session state from widget: '{widget_value}'")
+        try:
+            widget_value = safe_session_get(input_key, "")
+            if widget_value and not safe_session_get("user_input", ""):
+                st.session_state.user_input = widget_value
+                logger.debug(f"Synced session state from widget: '{widget_value}'")
+        except Exception as e:
+            logger.error(f"Error syncing widget value: {e}")
+            # Ensure session state is still functional
+            if "user_input" not in st.session_state:
+                st.session_state.user_input = ""
             
         # Extra backup: Store input in multiple places to prevent loss
         if user_input and user_input.strip():
-            st.session_state.backup_user_input = user_input.strip()
-            st.session_state.last_detected_input = user_input.strip()
-            logger.debug(f"Backup input stored: '{user_input.strip()}'")
+            try:
+                st.session_state.backup_user_input = user_input.strip()
+                st.session_state.last_detected_input = user_input.strip()
+                logger.debug(f"Backup input stored: '{user_input.strip()}'")
+            except Exception as e:
+                logger.error(f"Error storing backup input: {e}")
             
         # SUPER-AGGRESSIVE INPUT DETECTOR - Catch any input that might be missed
         # This runs immediately after input field creation to catch Enter key presses
@@ -3290,20 +3385,24 @@ def main_ui():
                 logger.debug(f"Input source: session state user_input")
             else:
                 # Tertiary: Check the actual widget key as fallback
-                input_key = f"user_input_{st.session_state.input_key}"
-                widget_value = st.session_state.get(input_key, "") or ""
-                if widget_value and widget_value.strip():
-                    current_input = widget_value.strip()
-                    logger.debug(f"Input source: widget key fallback")
-                else:
-                    # Quaternary: Check previous widget keys (in case of timing issues)
-                    for i in range(max(0, st.session_state.input_key - 3), st.session_state.input_key + 1):
-                        prev_key = f"user_input_{i}"
-                        prev_value = st.session_state.get(prev_key, "") or ""
-                        if prev_value and prev_value.strip():
-                            current_input = prev_value.strip()
-                            logger.debug(f"Input source: previous widget key {prev_key}")
-                            break
+                try:
+                    input_key_check = f"user_input_{st.session_state.get('input_key', 0)}"
+                    widget_value = safe_session_get(input_key_check, "")
+                    if widget_value and widget_value.strip():
+                        current_input = widget_value.strip()
+                        logger.debug(f"Input source: widget key fallback")
+                    else:
+                        # Quaternary: Check previous widget keys (in case of timing issues)
+                        for i in range(max(0, st.session_state.get('input_key', 0) - 3), st.session_state.get('input_key', 0) + 1):
+                            prev_key = f"user_input_{i}"
+                            prev_value = safe_session_get(prev_key, "")
+                            if prev_value and prev_value.strip():
+                                current_input = prev_value.strip()
+                                logger.debug(f"Input source: previous widget key {prev_key}")
+                                break
+                except Exception as e:
+                    logger.warning(f"Error in tertiary input detection: {e}")
+                    current_input = ""
             
             # Final safety check: if we still don't have input, check all session state keys
             if not current_input:
@@ -3395,9 +3494,12 @@ def main_ui():
         # Check if send button was clicked
         elif send_btn:
             # Enhanced debug logging to help troubleshoot
-            widget_key = f"user_input_{st.session_state.input_key}"
-            widget_value = st.session_state.get(widget_key, "")
-            logger.info(f"Send button clicked. user_input: '{user_input}', session_state.user_input: '{st.session_state.get('user_input', '')}', widget_value: '{widget_value}', current_input: '{current_input}'")
+            try:
+                widget_key = f"user_input_{st.session_state.get('input_key', 0)}"
+                widget_value = safe_session_get(widget_key, "")
+                logger.info(f"Send button clicked. user_input: '{user_input}', session_state.user_input: '{st.session_state.get('user_input', '')}', widget_value: '{widget_value}', current_input: '{current_input}'")
+            except Exception as e:
+                logger.warning(f"Error in send button debug logging: {e}")
             
             # GUARANTEED MESSAGE PROCESSING - No matter what, if send button is clicked, we process something
             input_to_process = ""
@@ -3488,16 +3590,19 @@ def main_ui():
                 logger.info(f"Found input from last detected: '{input_to_process}'")
             else:
                 # Last resort: check ALL session state keys for any input
-                widget_key = f"user_input_{st.session_state.input_key}"
-                widget_value = st.session_state.get(widget_key, "")
-                if widget_value and widget_value.strip():
-                    input_to_process = widget_value.strip()
-                else:
-                    for key, value in st.session_state.items():
-                        if key.startswith("user_input_") and value and str(value).strip():
-                            input_to_process = str(value).strip()
-                            logger.info(f"Found input from session state key {key}: '{input_to_process}'")
-                            break
+                try:
+                    widget_key = f"user_input_{st.session_state.get('input_key', 0)}"
+                    widget_value = safe_session_get(widget_key, "")
+                    if widget_value and widget_value.strip():
+                        input_to_process = widget_value.strip()
+                    else:
+                        for key, value in st.session_state.items():
+                            if key.startswith("user_input_") and value and str(value).strip():
+                                input_to_process = str(value).strip()
+                                logger.info(f"Found input from session state key {key}: '{input_to_process}'")
+                                break
+                except Exception as e:
+                    logger.warning(f"Error in last resort widget key check: {e}")
             
             # If we STILL don't have input, create a default message to ensure response
             if not input_to_process:
