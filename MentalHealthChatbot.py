@@ -3197,38 +3197,33 @@ def main_ui():
     # Define current_input early to avoid UnboundLocalError
     current_input = user_input or st.session_state.get("user_input", "") or ""
     
-    # Check for ANY interaction signals
-    interaction_signals = [
-        send_btn,
-        current_input and current_input.strip(),
-        st.session_state.get("user_clicked_send", False),
-        st.session_state.get("has_pending_input", False),
-        final_input_to_process is not None
-    ]
+    # Check for genuine user input (only process when there's actual content)
+    has_actual_input = final_input_to_process and final_input_to_process.strip()
+    explicit_send = send_btn and current_input and current_input.strip()
     
-    # If ANY interaction is detected, FORCE immediate processing
-    if any(interaction_signals):
-        # Use found input or default
-        if not final_input_to_process:
-            final_input_to_process = "I need support right now"
-            logger.info("MEGA-AGGRESSIVE: No input found but interaction detected - using default message")
+    # Only process if there's actual user input OR explicit send button with content
+    if has_actual_input or explicit_send:
+        # Use the actual input found
+        if not final_input_to_process and explicit_send:
+            final_input_to_process = current_input.strip()
         
-        logger.info(f"MEGA-AGGRESSIVE: User interaction detected - FORCE PROCESSING: '{final_input_to_process}'")
-        
-        # Clear ALL input sources immediately
-        clear_input()
-        
-        # Clear ALL tracking flags
-        st.session_state.user_clicked_send = False
-        st.session_state.has_pending_input = False
-        
-        # FORCE processing with bulletproof processor
-        bulletproof_message_processor(final_input_to_process, model_choice)
-        
-        logger.info(f"MEGA-AGGRESSIVE: Force processing completed")
-        
-        # Force UI update
-        st.rerun()
+        if final_input_to_process and final_input_to_process.strip():
+            logger.info(f"Processing user input: '{final_input_to_process}'")
+            
+            # Clear ALL input sources immediately
+            clear_input()
+            
+            # Clear ALL tracking flags
+            st.session_state.user_clicked_send = False
+            st.session_state.has_pending_input = False
+            
+            # Process the message
+            bulletproof_message_processor(final_input_to_process, model_choice)
+            
+            logger.info(f"Input processing completed")
+            
+            # Force UI update
+            st.rerun()
     
     # FINAL BULLETPROOF LAYER - Pre-emptive processing to prevent ANY validation warnings
     # This runs before normal logic to catch and process ANY user interaction immediately
@@ -3354,12 +3349,11 @@ def main_ui():
             
             return should_process
         
-        # ULTRA-AGGRESSIVE PROTECTION: Force process ANY input when Send button is clicked
-        # This completely bypasses ALL validation and guarantees a response
+        # Only process send button if there's actual input content
         if send_btn:
-            logger.info("ULTRA-AGGRESSIVE: Send button clicked - FORCE PROCESSING ANY INPUT")
+            logger.info("Send button clicked - checking for valid input")
             
-            # IMMEDIATELY process whatever we can find - NO validation allowed
+            # Try to find actual input content
             final_input = None
             
             # Try ALL possible sources to find input
@@ -3383,22 +3377,20 @@ def main_ui():
                     final_input = str(source).strip()
                     break
             
-            # If STILL no input found, use default
-            if not final_input:
-                final_input = "I need support right now"
-                logger.info("ULTRA-AGGRESSIVE: No input found anywhere - using default message")
-            
-            # FORCE IMMEDIATE PROCESSING - NO validation, NO checks, NO failures allowed
-            logger.info(f"ULTRA-AGGRESSIVE: Force processing input: '{final_input}'")
-            
-            # Clear ALL input sources immediately
-            clear_input()
-            
-            # GUARANTEE processing with bulletproof processor
-            bulletproof_message_processor(final_input, model_choice)
-            
-            # Force UI update
-            st.rerun()
+            # Only process if we found actual input content
+            if final_input:
+                logger.info(f"Processing send button input: '{final_input}'")
+                
+                # Clear ALL input sources immediately
+                clear_input()
+                
+                # Process the message
+                bulletproof_message_processor(final_input, model_choice)
+                
+                # Force UI update
+                st.rerun()
+            else:
+                logger.info("Send button clicked but no input found - ignoring")
             
         # Check if send button was clicked
         elif send_btn:
@@ -3458,47 +3450,19 @@ def main_ui():
             bulletproof_message_processor(input_to_process, model_choice)
             logger.info(f"BULLETPROOF: Send button processing completed")
         
-        # ULTRA-AGGRESSIVE PROTECTION: Force process ANY input when Enter key is pressed
-        # This completely bypasses ALL validation and guarantees a response
+        # Process Enter key input if there's actual content
         elif current_input and current_input.strip():
-            logger.info("ULTRA-AGGRESSIVE: Enter key detected - FORCE PROCESSING ANY INPUT")
+            logger.info("Enter key detected - processing input")
             
-            # IMMEDIATELY process whatever we can find - NO validation allowed
-            final_input = None
+            # Use the current input since it's already validated as non-empty
+            final_input = current_input.strip()
             
-            # Try ALL possible sources to find input
-            input_sources = [
-                current_input,
-                user_input,
-                st.session_state.get("user_input", ""),
-                st.session_state.get("backup_user_input", ""),
-                st.session_state.get("last_detected_input", ""),
-                st.session_state.get(f"user_input_{st.session_state.input_key}", "")
-            ]
-            
-            # Add ALL widget keys as potential sources
-            for key in st.session_state.keys():
-                if key.startswith("user_input_"):
-                    input_sources.append(st.session_state.get(key, ""))
-            
-            # Find the first non-empty input
-            for source in input_sources:
-                if source and str(source).strip():
-                    final_input = str(source).strip()
-                    break
-            
-            # If STILL no input found, use default
-            if not final_input:
-                final_input = "I need support right now"
-                logger.info("ULTRA-AGGRESSIVE: No input found anywhere - using default message")
-            
-            # FORCE IMMEDIATE PROCESSING - NO validation, NO checks, NO failures allowed
-            logger.info(f"ULTRA-AGGRESSIVE: Force processing Enter input: '{final_input}'")
+            logger.info(f"Processing Enter key input: '{final_input}'")
             
             # Clear ALL input sources immediately
             clear_input()
             
-            # GUARANTEE processing with bulletproof processor
+            # Process the message
             bulletproof_message_processor(final_input, model_choice)
             
             # Force UI update
